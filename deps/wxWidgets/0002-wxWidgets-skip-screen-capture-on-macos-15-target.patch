@@ -1,0 +1,13 @@
+diff --git a/src/osx/carbon/dcscreen.cpp b/src/osx/carbon/dcscreen.cpp
+index 1c6a987f96..cb4945b6c9 100644
+--- a/src/osx/carbon/dcscreen.cpp
++++ b/src/osx/carbon/dcscreen.cpp
+@@ -55,7 +55,7 @@ wxBitmap wxScreenDCImpl::DoGetAsBitmap(const wxRect *subrect) const
+ 
+     wxBitmap bmp(rect.GetSize(), 32);
+ 
+-#if !wxOSX_USE_IPHONE
++#if !wxOSX_USE_IPHONE && __MAC_OS_X_VERSION_MIN_REQUIRED < 150000 // CGDisplayCreateImage is obsoleted from macOS 15
+     CGRect srcRect = CGRectMake(rect.x, rect.y, rect.width, rect.height);
+ 
+     CGContextRef context = (CGContextRef)bmp.GetHBITMAP();

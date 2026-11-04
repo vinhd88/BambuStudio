@@ -38,7 +38,7 @@ while getopts "1dpa:st:xbc:h" opt; do
         echo "   -d: Build deps"
         echo "   -a: Set ARCHITECTURE (arm64 or x86_64 or universal)"
         echo "   -s: Build slicer only"
-        echo "   -t: Specify minimum version of the target platform, default is 10.15"
+        echo "   -t: Specify minimum version of the target platform, default is 26.0"
         echo "   -x: Use Ninja CMake generator, default is Xcode"
         echo "   -b: Build without reconfiguring CMake"
         echo "   -c: Set CMake build configuration, default is Release"
@@ -76,7 +76,8 @@ if [ -z "$DEPS_CMAKE_GENERATOR" ]; then
 fi
 
 if [ -z "$OSX_DEPLOYMENT_TARGET" ]; then
-  export OSX_DEPLOYMENT_TARGET="10.15"
+  # agent-bridge: this build supports macOS 26 (Tahoe) onwards
+  export OSX_DEPLOYMENT_TARGET="26.0"
 fi
 
 echo "Build params:"
@@ -190,6 +191,16 @@ function build_slicer() {
             cp -R "$resources_path" ./BambuStudio.app/Contents/Resources
             # delete .DS_Store file
             find ./BambuStudio.app/ -name '.DS_Store' -delete
+            # agent-bridge: keep this build distinct from the official app in macOS.
+            # Drop URL scheme and file type claims so the official app keeps them.
+            plist=./BambuStudio.app/Contents/Info.plist
+            /usr/libexec/PlistBuddy \
+                -c "Set :CFBundleIdentifier local.bambustudio.agent" \
+                -c "Set :CFBundleName BambuStudio Agent" \
+                -c "Delete :CFBundleURLTypes" \
+                -c "Delete :CFBundleDocumentTypes" \
+                -c "Delete :UTImportedTypeDeclarations" \
+                "$plist"
         )
 
     fi
