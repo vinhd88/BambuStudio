@@ -25,7 +25,7 @@ endif ()
 
 bambustudio_add_cmake_project(wxWidgets
     GIT_REPOSITORY "https://github.com/bambulab/wxWidgets"
-    GIT_TAG master
+    GIT_TAG abb542694ef4534a50e65c5b877b2774d02952ae
     # agent-bridge: macOS 26 target needs this. The guard file stops a re-apply on rebuild.
     PATCH_COMMAND test -f WXWIDGETS_PATCHED || ${PATCH_CMD} ${CMAKE_CURRENT_LIST_DIR}/0002-wxWidgets-skip-screen-capture-on-macos-15-target.patch && touch WXWIDGETS_PATCHED
     DEPENDS ${PNG_PKG} ${ZLIB_PKG} ${EXPAT_PKG} ${TIFF_PKG} ${JPEG_PKG}
