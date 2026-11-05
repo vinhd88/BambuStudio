@@ -1,5 +1,6 @@
 #include "libslic3r/Technologies.hpp"
 #include "GUI_App.hpp"
+#include "AgentBridge/AgentBridge.hpp"
 #include "BindDialog.hpp"
 #include "GUI_Init.hpp"
 #include "GUI_ObjectList.hpp"
@@ -1192,6 +1193,8 @@ void GUI_App::post_init()
     } else {
         BOOST_LOG_TRIVIAL(info) << "sync_user_preset: false";
     }
+
+    AgentBridge::start_bridge();
 
 
 
@@ -2933,6 +2936,8 @@ bool GUI_App::OnInit()
 
 int GUI_App::OnExit()
 {
+    AgentBridge::stop_bridge();
+
 #ifdef __APPLE__
     UnRegisterMacPowerCallBack();
 #endif

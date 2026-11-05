@@ -47,6 +47,7 @@ endif ()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_subdirectory(slic3rutils)
+add_subdirectory(agent_bridge)
 add_subdirectory(fff_print)
 add_subdirectory(fila_manager)
 add_subdirectory(filament_group)

@@ -1,4 +1,5 @@
 #include "MainFrame.hpp"
+#include "AgentBridge/AgentBridge.hpp"
 #include "GLToolbar.hpp"
 #include <wx/panel.h>
 #include <wx/notebook.h>
@@ -639,6 +640,9 @@ DPIFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, BORDERLESS_FRAME_
         }
 
         MarkdownTip::ExitTip();
+
+        // Before the model and frame go away: queued bridge calls read them.
+        AgentBridge::stop_bridge();
 
         m_plater->reset();
         this->shutdown();

@@ -471,6 +471,24 @@ set(SLIC3R_GUI_SOURCES
     GUI/UserManager.cpp
     GUI/HttpServer.hpp
     GUI/HttpServer.cpp
+    GUI/AgentBridge/AgentBridge.cpp
+    GUI/AgentBridge/AgentBridge.hpp
+    GUI/AgentBridge/AgentBridgeProjectJson.cpp
+    GUI/AgentBridge/AgentBridgeProjectJson.hpp
+    GUI/AgentBridge/AgentBridgeReadHandlers.cpp
+    GUI/AgentBridge/AgentBridgeReadHandlers.hpp
+    GUI/AgentBridge/AgentBridgeRequestGuard.cpp
+    GUI/AgentBridge/AgentBridgeRequestGuard.hpp
+    GUI/AgentBridge/AgentBridgeServer.cpp
+    GUI/AgentBridge/AgentBridgeServer.hpp
+    GUI/AgentBridge/AgentBridgeSettingsHandlers.cpp
+    GUI/AgentBridge/AgentBridgeSettingsJson.cpp
+    GUI/AgentBridge/AgentBridgeSettingsJson.hpp
+    GUI/AgentBridge/AgentBridgeSettingsTabMap.cpp
+    GUI/AgentBridge/AgentBridgeSettingsTabMap.hpp
+    GUI/AgentBridge/AgentBridgeTypes.hpp
+    GUI/AgentBridge/AgentBridgeUiThreadCall.cpp
+    GUI/AgentBridge/AgentBridgeUiThreadCall.hpp
     Config/Snapshot.cpp
     Config/Snapshot.hpp
     Config/Version.cpp

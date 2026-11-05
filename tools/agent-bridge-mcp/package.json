@@ -1,0 +1,11 @@
+{
+  "name": "agent-bridge-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stdio MCP adapter for the agent bridge in the custom Bambu Studio build",
+  "type": "module",
+  "bin": { "agent-bridge-mcp": "server.js" },
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test test/" },
+  "dependencies": { "@modelcontextprotocol/sdk": "1.32.2" }
+}
