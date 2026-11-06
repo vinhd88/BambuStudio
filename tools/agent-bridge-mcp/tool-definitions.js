@@ -13,7 +13,7 @@ const noArgs = { type: 'object', properties: {}, additionalProperties: false };
 export const TOOLS = [
   {
     name: 'get_studio_state',
-    description: 'Quick status of Bambu Studio: open project, unsaved changes, current plate, slicing state, whether a dialog is open, selected presets. Call this first. Works while a dialog is open; other tools return studio_busy then.',
+    description: 'Quick status of Bambu Studio: open project, unsaved changes, current plate, slicing state, whether a dialog is open, selected presets. Call this first. Works while a dialog is open; other tools return studio_busy then. Also reports dialog_title, a running change or job, and last_change: the outcome of the latest apply_settings, including one that waited on a dialog.',
     inputSchema: noArgs,
   },
   {
@@ -92,6 +92,43 @@ export const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: { plate: { type: 'integer', minimum: 1 } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'apply_settings',
+    description: 'Change settings in the open project, live in the Studio UI. Validates every key first: if any fails, status is rejected, rejections gives a reason per key, and nothing changes. On success returns changes (before and after), linked_changes (settings Studio changed along with them), not_applied, warnings and a change_id. status waiting_for_user means Studio opened a dialog: ask the user to answer it, then read last_change from get_studio_state. Values use the forms get_settings returns; a single value on a list setting sets every element. Printer settings, G-code, machine limits and output naming are read-only. Temperatures must stay in the filament range and speeds within machine limits. Does not save the project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        changes: { type: 'object', description: 'Setting names and new values, such as { "outer_wall_speed": 150, "sparse_infill_density": "15%" }.', minProperties: 1 },
+        scope: { type: 'string', enum: ['global', 'plate', 'object', 'part', 'height_range'], description: 'Default global: the selected process and filament presets. Other levels override it for one plate, object, part or height range.' },
+        slot: { type: 'integer', minimum: 1, description: 'For filament settings at scope global when the project has several slots. Must be the slot selected on the Filament tab.' },
+        plate: { type: 'integer', minimum: 1, description: 'For scope plate. Default current plate.' },
+        object: { type: 'integer', minimum: 1, description: 'Required for object, part and height_range.' },
+        part: { type: 'integer', minimum: 1, description: 'Required for scope part.' },
+        range: { type: 'integer', minimum: 1, description: 'Required for scope height_range.' },
+      },
+      required: ['changes'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'slice_plate',
+    description: 'Start slicing a plate, as the Slice button does. Returns at once with a job_id and state; poll get_job. state blocked means Studio declined, with a reason, and no slice ran. Selects the plate if it is not current and shows the Preview tab. Default current plate.',
+    inputSchema: {
+      type: 'object',
+      properties: { plate: { type: 'integer', minimum: 1 } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_job',
+    description: 'State of a slice job from slice_plate: queued, slicing (with progress_percent), done (with the result, as get_slice_result), failed or blocked (with a reason). result_outdated means settings or the plate changed after the slice. Works while a dialog is open.',
+    inputSchema: {
+      type: 'object',
+      properties: { job_id: { type: 'string' } },
+      required: ['job_id'],
       additionalProperties: false,
     },
   },

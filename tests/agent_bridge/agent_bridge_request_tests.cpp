@@ -1,5 +1,7 @@
 #include <catch2/catch.hpp>
 
+#include <optional>
+
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -166,6 +168,71 @@ TEST_CASE("call_on_ui_thread", "[agent_bridge]")
         }, done);
         REQUIRE(result.wait_for(WAIT_LIMIT) == std::future_status::ready);
         CHECK(result.get().status == 200);
+    }
+
+    SECTION("work inside a dialog: the client hears on_overrun, once, and the late response is dropped")
+    {
+        const UiPoster    immediately = [](std::function<void()> fn) { std::thread(std::move(fn)).detach(); };
+        std::atomic<int>  deliveries{0};
+        std::atomic<bool> finished{false};
+        std::promise<void> released;
+        auto               release = released.get_future().share();
+        call_on_ui_thread(io_thread.io, immediately, SHORT_TIMEOUT, [release, &finished] {
+            release.wait();
+            finished = true;
+            return ok_response({{"late", true}});
+        }, [&](BridgeResponse response) { ++deliveries; if (deliveries == 1) delivered.set_value(std::move(response)); },
+        [] { return ok_response({{"status", "waiting_for_user"}}); });
+
+        REQUIRE(result.wait_for(WAIT_LIMIT) == std::future_status::ready);
+        CHECK(json::parse(result.get().body)["result"]["status"] == "waiting_for_user");
+
+        released.set_value();
+        for (int i = 0; i < 100 && !finished.load(); ++i)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(SHORT_TIMEOUT);
+        CHECK(deliveries.load() == 1);
+    }
+
+    SECTION("on_overrun returning nothing keeps the call waiting for the real response")
+    {
+        const UiPoster immediately = [](std::function<void()> fn) { std::thread(std::move(fn)).detach(); };
+        call_on_ui_thread(io_thread.io, immediately, SHORT_TIMEOUT, [] {
+            std::this_thread::sleep_for(SHORT_TIMEOUT * 3);
+            return ok_response({{"late", true}});
+        }, done, []() -> std::optional<BridgeResponse> { return std::nullopt; });
+        REQUIRE(result.wait_for(WAIT_LIMIT) == std::future_status::ready);
+        CHECK(json::parse(result.get().body)["result"]["late"] == true);
+    }
+
+    SECTION("a timeout before the work started is marked as having had no effect")
+    {
+        std::function<void()> queued;
+        const UiPoster        never_runs = [&queued](std::function<void()> fn) { queued = std::move(fn); };
+        call_on_ui_thread(io_thread.io, never_runs, SHORT_TIMEOUT, [] { return ok_response({}); }, done);
+        REQUIRE(result.wait_for(WAIT_LIMIT) == std::future_status::ready);
+        CHECK_FALSE(result.get().work_ran);
+        queued();
+    }
+
+    SECTION("on_overrun is not used when the work finishes in time")
+    {
+        const UiPoster immediately = [](std::function<void()> fn) { std::thread(std::move(fn)).detach(); };
+        call_on_ui_thread(io_thread.io, immediately, WAIT_LIMIT, [] { return ok_response({{"x", 1}}); }, done,
+                          [] { return ok_response({{"status", "waiting_for_user"}}); });
+        REQUIRE(result.wait_for(WAIT_LIMIT) == std::future_status::ready);
+        CHECK(json::parse(result.get().body)["result"]["x"] == 1);
+    }
+
+    SECTION("a call the UI thread never started gets studio_busy, not on_overrun")
+    {
+        std::function<void()> queued;
+        const UiPoster        never_runs = [&queued](std::function<void()> fn) { queued = std::move(fn); };
+        call_on_ui_thread(io_thread.io, never_runs, SHORT_TIMEOUT, [] { return ok_response({}); }, done,
+                          [] { return ok_response({{"status", "waiting_for_user"}}); });
+        REQUIRE(result.wait_for(WAIT_LIMIT) == std::future_status::ready);
+        CHECK(json::parse(result.get().body)["error"]["code"] == "studio_busy");
+        queued();
     }
 
     SECTION("exceptions become error responses")

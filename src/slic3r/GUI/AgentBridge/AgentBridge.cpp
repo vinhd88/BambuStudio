@@ -10,8 +10,11 @@
 #include "libslic3r/Utils.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
 
-#include "AgentBridgeReadHandlers.hpp"
+#include "AgentBridgeModalGuard.hpp"
+#include "AgentBridgeMutationGate.hpp"
 #include "AgentBridgeServer.hpp"
+#include "AgentBridgeSliceJobs.hpp"
+#include "AgentBridgeToolDispatch.hpp"
 #include "AgentBridgeUiThreadCall.hpp"
 
 namespace fs = boost::filesystem;
@@ -42,6 +45,21 @@ void post_to_ui_thread(std::function<void()> fn)
             fn();
     });
 }
+// A native macOS dialog (file picker, alert) runs its own loop that does not run queued calls, so
+// every call times out as studio_busy while it is open. The modal hook still counts it, so the client
+// can be told what Studio is waiting for. The call never ran, so nothing changed.
+std::function<void(BridgeResponse)> name_open_dialog(std::function<void(BridgeResponse)> done)
+{
+    return [done = std::move(done)](BridgeResponse response) {
+        if (!response.work_ran && open_dialog_count() > 0) {
+            const std::string title = open_dialog_title();
+            response = error_response(409, "waiting_for_user",
+                                      (title.empty() ? std::string("A dialog") : "The dialog \"" + title + "\"") +
+                                          " is open in Studio. Nothing was changed. Ask the user to close it, then try again.");
+        }
+        done(std::move(response));
+    };
+}
 } // namespace
 
 void start_bridge()
@@ -58,10 +76,14 @@ void start_bridge()
         // The handler is only called while s_server is set: stop_bridge joins the io thread first.
         auto server = std::make_unique<AgentBridgeServer>(discovery_path, [](const std::string &tool, const std::string &body, std::function<void(BridgeResponse)> done) {
             call_on_ui_thread(s_server->io(), post_to_ui_thread, UI_CALL_TIMEOUT,
-                              [tool, body] { return handle_tool_call(tool, body); }, std::move(done));
+                              [tool, body] { return handle_tool_call(tool, body); }, name_open_dialog(std::move(done)),
+                              // Only a change or slice start is answered before it ends; a slow read just takes longer.
+                              is_mutation_tool(tool) ? std::function<std::optional<BridgeResponse>()>(overrun_response) : nullptr);
         });
         s_server = std::move(server);
         s_server->start();
+        install_modal_guard();
+        install_slice_tracking();
         BOOST_LOG_TRIVIAL(info) << "agent bridge: listening on 127.0.0.1:" << s_server->port();
     } catch (const std::exception &e) {
         s_server.reset();
@@ -73,6 +95,8 @@ void stop_bridge()
 {
     if (!s_server)
         return;
+    remove_slice_tracking();
+    remove_modal_guard();
     try {
         s_server->stop();
     } catch (const std::exception &e) {

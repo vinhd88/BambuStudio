@@ -13,13 +13,10 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/steady_timer.hpp>
 
-#include "AgentBridgeTypes.hpp"
+#include "AgentBridgeHttpSession.hpp"
 
 namespace Slic3r { namespace GUI { namespace AgentBridge {
 
-// Receives an authenticated POST /v1/tools/<tool>. Called on the io thread, so it must not block;
-// `done` may be called from any thread.
-using ToolHandler = std::function<void(const std::string &tool, const std::string &body, std::function<void(BridgeResponse)> done)>;
 
 // Minimal HTTP server on 127.0.0.1 and a random free port. Modelled on GUI/HttpServer, which cannot
 // be extended: it has a fixed port, no auth, and sends unknown routes to the login flow.
@@ -43,8 +40,6 @@ public:
 
 private:
     void do_accept();
-    void write_discovery_file() const;
-    void remove_discovery_file() const;
 
     std::string                              m_discovery_path;
     ToolHandler                              m_handler;

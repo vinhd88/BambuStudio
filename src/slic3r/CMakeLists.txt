@@ -486,7 +486,34 @@ set(SLIC3R_GUI_SOURCES
     GUI/AgentBridge/AgentBridgeSettingsJson.hpp
     GUI/AgentBridge/AgentBridgeSettingsTabMap.cpp
     GUI/AgentBridge/AgentBridgeSettingsTabMap.hpp
-    GUI/AgentBridge/AgentBridgeTypes.hpp
+    GUI/AgentBridge/AgentBridgeApplyHandlers.cpp
+GUI/AgentBridge/AgentBridgeApplyHandlers.hpp
+GUI/AgentBridge/AgentBridgeApplyValidation.cpp
+GUI/AgentBridge/AgentBridgeApplyValidation.hpp
+GUI/AgentBridge/AgentBridgeApplyRoutes.cpp
+GUI/AgentBridge/AgentBridgeApplyRoutes.hpp
+GUI/AgentBridge/AgentBridgeChangeJournal.cpp
+GUI/AgentBridge/AgentBridgeChangeJournal.hpp
+GUI/AgentBridge/AgentBridgeDiscoveryFile.cpp
+GUI/AgentBridge/AgentBridgeDiscoveryFile.hpp
+GUI/AgentBridge/AgentBridgeHttpSession.cpp
+GUI/AgentBridge/AgentBridgeHttpSession.hpp
+GUI/AgentBridge/AgentBridgeModalGuard.cpp
+GUI/AgentBridge/AgentBridgeModalGuard.hpp
+GUI/AgentBridge/AgentBridgeMutationGate.cpp
+GUI/AgentBridge/AgentBridgeMutationGate.hpp
+GUI/AgentBridge/AgentBridgeSafetyRules.cpp
+GUI/AgentBridge/AgentBridgeSafetyRules.hpp
+GUI/AgentBridge/AgentBridgeSettingValue.cpp
+GUI/AgentBridge/AgentBridgeSettingValue.hpp
+GUI/AgentBridge/AgentBridgeSliceJobs.cpp
+GUI/AgentBridge/AgentBridgeSliceJobs.hpp
+GUI/AgentBridge/AgentBridgeToolDispatch.cpp
+GUI/AgentBridge/AgentBridgeToolDispatch.hpp
+GUI/AgentBridge/AgentBridgeArgs.hpp
+GUI/AgentBridge/AgentBridgePresetHandlers.cpp
+GUI/AgentBridge/AgentBridgeSettingsDefinitionJson.cpp
+GUI/AgentBridge/AgentBridgeTypes.hpp
     GUI/AgentBridge/AgentBridgeUiThreadCall.cpp
     GUI/AgentBridge/AgentBridgeUiThreadCall.hpp
     Config/Snapshot.cpp

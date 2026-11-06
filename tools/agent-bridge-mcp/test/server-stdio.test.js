@@ -10,7 +10,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const serverPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'server.js');
-const EXPECTED_TOOLS = ['describe_settings', 'get_filament', 'get_project', 'get_settings', 'get_slice_result', 'get_studio_state', 'list_filaments', 'list_presets'];
+const EXPECTED_TOOLS = ['apply_settings', 'describe_settings', 'get_filament', 'get_job', 'get_project', 'get_settings', 'get_slice_result', 'get_studio_state', 'list_filaments', 'list_presets', 'slice_plate'];
 
 describe('MCP adapter with Studio closed', () => {
   let client;

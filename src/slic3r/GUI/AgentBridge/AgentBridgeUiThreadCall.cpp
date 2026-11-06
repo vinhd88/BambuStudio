@@ -15,8 +15,11 @@ struct CallState
     boost::asio::steady_timer                timer;
     std::function<BridgeResponse()>          work;
     std::function<void(BridgeResponse)>      done;
-    // Whichever of the UI thread and the timer sets this first owns the outcome.
+    std::function<std::optional<BridgeResponse>()> on_overrun;
+    // Whichever of the UI thread and the timer sets this first decides whether `work` runs at all.
     std::atomic<bool>                        claimed{false};
+    // Only touched on the io thread.
+    bool                                     responded{false};
 
     explicit CallState(std::shared_ptr<boost::asio::io_context> io_in) : io(std::move(io_in)), timer(*io) {}
 };
@@ -26,17 +29,29 @@ void call_on_ui_thread(std::shared_ptr<boost::asio::io_context> io,
                        const UiPoster                          &post,
                        std::chrono::milliseconds                timeout,
                        std::function<BridgeResponse()>          work,
-                       std::function<void(BridgeResponse)>      done)
+                       std::function<void(BridgeResponse)>      done,
+                       std::function<std::optional<BridgeResponse>()> on_overrun)
 {
     auto state  = std::make_shared<CallState>(std::move(io));
     state->work = std::move(work);
     state->done = std::move(done);
+    state->on_overrun = std::move(on_overrun);
 
     state->timer.expires_after(timeout);
     state->timer.async_wait([state](const boost::system::error_code &ec) {
-        if (ec || state->claimed.exchange(true))
+        if (ec)
             return;
-        state->done(error_response(503, "studio_busy", "Studio did not respond in time. It may be busy or waiting on a dialog."));
+        if (!state->claimed.exchange(true)) {
+            state->responded = true;
+            BridgeResponse busy = error_response(503, "studio_busy", "Studio did not respond in time. It may be busy or waiting on a dialog.");
+            busy.work_ran       = false;
+            state->done(std::move(busy));
+        } else if (state->on_overrun) {
+            if (std::optional<BridgeResponse> early = state->on_overrun()) {
+                state->responded = true;
+                state->done(std::move(*early));
+            }
+        }
     });
 
     post([state] {
@@ -56,7 +71,8 @@ void call_on_ui_thread(std::shared_ptr<boost::asio::io_context> io,
             // The error overload: a throw here would take down the server thread over a harmless timer.
             boost::system::error_code ignored;
             state->timer.cancel(ignored);
-            state->done(std::move(response));
+            if (!state->responded)
+                state->done(std::move(response));
         });
     });
 }
