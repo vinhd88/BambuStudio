@@ -1,6 +1,8 @@
 // Bridge tool that switches the process preset. UI thread.
 #include "AgentBridgePresetSelection.hpp"
 
+#include <set>
+
 #include "libslic3r/AppConfig.hpp"
 #include "libslic3r/PresetBundle.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
@@ -68,10 +70,13 @@ json unsaved_edits(const PresetCollection &presets)
 {
     json edits = json::object();
     const DynamicPrintConfig &config = presets.get_edited_preset().config;
-    for (std::string key : presets.current_dirty_options()) {
+    // Ids Studio keeps in step with the selected preset; its own dirty check skips them too
+    // (skipped_in_dirty in Preset.cpp). They are not edits, and change on every switch.
+    static const std::set<std::string> not_edits = {"printer_settings_id", "print_settings_id", "filament_settings_id", "printer_nozzle_diameter_mode"};
+    for (std::string key : presets.current_dirty_options(true)) {
         // Per-extruder variants are listed as key#index; the value is the whole list.
         key = key.substr(0, key.find('#'));
-        if (config.has(key))
+        if (config.has(key) && not_edits.count(key) == 0)
             edits[key] = config.opt_serialize(key);
     }
     return edits;
@@ -79,8 +84,10 @@ json unsaved_edits(const PresetCollection &presets)
 
 json unsaved_changes_rejection(const PresetCollection &presets, const std::string &what)
 {
-    json keys = json::array();
-    for (const auto &item : unsaved_edits(presets).items())
+    // Named: items() views the object, and a temporary would be gone before the loop body runs.
+    const json edits = unsaved_edits(presets);
+    json       keys  = json::array();
+    for (const auto &item : edits.items())
         keys.push_back(item.key());
     return {{"status", "rejected"},
             {"code", "unsaved_changes"},
@@ -97,13 +104,24 @@ void switch_process_preset(const std::string &name, bool transfer)
     note_settings_changed();
 }
 
-std::vector<int> restore_filament_slots(const std::vector<std::string> &presets)
+std::vector<int> restore_filament_slots(const std::vector<std::string> &presets, const std::vector<std::string> &agent_left)
 {
-    std::vector<int> failed;
-    for (size_t slot = 0; slot < presets.size() && slot < bundle().filament_presets.size(); ++slot)
-        if (bundle().filament_presets[slot] != presets[slot])
-            if (pick_filament_for_slot(slot, presets[slot]) || bundle().filament_presets[slot] != presets[slot])
-                failed.push_back(static_cast<int>(slot + 1));
+    std::vector<int>  failed;
+    PresetCollection &filaments = bundle().filaments;
+    for (size_t slot = 0; slot < presets.size() && slot < bundle().filament_presets.size(); ++slot) {
+        if (bundle().filament_presets[slot] == presets[slot])
+            continue;
+        // A slot that no longer holds what the agent's switch left was picked since, by the user.
+        if (slot < agent_left.size() && bundle().filament_presets[slot] != agent_left[slot]) {
+            failed.push_back(static_cast<int>(slot + 1));
+            continue;
+        }
+        // Switching a slot whose filament has unsaved edits opens Studio's unsaved-changes dialog,
+        // where the user could drop them. select_filament refuses this too; leave it to the user.
+        const bool has_edits = filaments.current_is_dirty() && filaments.get_edited_preset().name == bundle().filament_presets[slot];
+        if (has_edits || pick_filament_for_slot(slot, presets[slot]) || bundle().filament_presets[slot] != presets[slot])
+            failed.push_back(static_cast<int>(slot + 1));
+    }
     return failed;
 }
 
@@ -144,12 +162,17 @@ json select_process_preset(const json &args)
     result["change_id"]                     = change_id;
     MutationScope running("change_id", change_id);
 
-    switch_process_preset(preset->name, dirty);
+    try {
+        switch_process_preset(preset->name, dirty);
+    } catch (const std::exception &e) {
+        fail_change(change_id, {{"after", prints.get_selected_preset_name()}, {"after_edits", unsaved_edits(prints)}, {"after_slots", presets.filament_presets}}, e);
+    }
 
     const std::string after = prints.get_selected_preset_name();
     ChangeRecord     *record = change_journal().find(change_id);
     record->restore["after"]       = after;
     record->restore["after_edits"] = unsaved_edits(prints);
+    record->restore["after_slots"] = presets.filament_presets;
     result["after"]  = after;
     result["status"] = after == preset->name ? "applied" : "not_applied";
     if (after != preset->name)

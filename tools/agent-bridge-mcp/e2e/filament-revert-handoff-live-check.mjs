@@ -9,7 +9,13 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { BridgeCallError, callBridgeTool } from '../bridge-client.js';
 
-const call = (tool, args) => callBridgeTool(process.env, tool, args);
+// Every change id this run made, so a failed check's leftovers can be reverted at the end.
+const made = [];
+const call = async (tool, args) => {
+  const result = await callBridgeTool(process.env, tool, args);
+  if (result?.change_id && tool !== 'revert_change' && !made.includes(result.change_id)) made.push(result.change_id);
+  return result;
+};
 const handoff = process.argv.includes('--handoff');
 let failures = 0;
 
@@ -112,6 +118,24 @@ await check('set_object_filament changes the object and reverts', async () => {
   assert.deepEqual(await snapshot(), start);
 });
 
+await check('a filament pick and its revert do not block reverting an older process setting', async () => {
+  const { filaments } = await call('list_filaments', {});
+  const current = start.presets[1][0];
+  const other = filaments.find((f) => f.name !== current && f.source === 'system' && f.type === 'PLA') ?? filaments.find((f) => f.name !== current);
+  const setting = await call('apply_settings', { changes: { outer_wall_speed: 154 } });
+  const pick = await call('select_filament', { slot: 1, name: other.name });
+  assert.equal(pick.status, 'applied', JSON.stringify(pick));
+  await revertAll([setting.change_id, pick.change_id]);
+  assert.deepEqual(await snapshot(), start);
+});
+
+await check('skip is refused for a change that can still be reverted', async () => {
+  const result = await call('apply_settings', { changes: { outer_wall_speed: 153 } });
+  await assert.rejects(call('revert_change', { change_id: result.change_id, skip: true }), (error) => error.code === 'not_skippable');
+  await revertAll([result.change_id]);
+  assert.deepEqual(await snapshot(), start);
+});
+
 await check('nothing is left to revert from this run', async () => {
   const state = await call('get_studio_state');
   assert.deepEqual([state.process_preset, state.filament_presets], start.presets);
@@ -125,11 +149,27 @@ if (handoff) {
       job = await call('get_job', { job_id: job.job_id });
     }
     assert.ok(['done', 'blocked'].includes(job.state), JSON.stringify(job));
-    const result = await call('open_in_official_studio', {});
+    let result = await call('open_in_official_studio', {});
+    // Saving with G-code can outlast the bridge's UI timeout; the outcome then lands in last_handoff.
+    for (let i = 0; i < 100 && result.status === 'in_progress'; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const { last_handoff: last } = await call('get_studio_state');
+      if (last?.handoff_id === result.handoff_id && last.status !== 'running') result = last;
+    }
     assert.equal(result.status, 'opened', JSON.stringify(result));
     assert.ok(existsSync(result.copy_path));
     console.log(`     copy ${result.copy_path}, estimate ${result.estimate.time_s} s, official ${result.official_version}`);
   });
+}
+
+// Leftovers of failed checks, newest first. The user's own earlier changes are older and stay.
+for (const id of [...made].reverse()) {
+  try {
+    const result = await callBridgeTool(process.env, 'revert_change', { change_id: id });
+    if (result.status === 'reverted') console.log(`     cleaned up ${id}`);
+  } catch (error) {
+    console.log(`     could not clean up ${id}: ${error.code ?? error.message}`);
+  }
 }
 
 console.log(failures === 0 ? 'all checks passed' : `${failures} check(s) failed`);

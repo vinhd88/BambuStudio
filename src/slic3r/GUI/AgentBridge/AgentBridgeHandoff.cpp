@@ -15,6 +15,7 @@
 #include "slic3r/GUI/PartPlate.hpp"
 #include "slic3r/GUI/Plater.hpp"
 
+#include "AgentBridgeMutationGate.hpp"
 #include "AgentBridgeReadHandlers.hpp"
 #include "AgentBridgeTypes.hpp"
 
@@ -55,6 +56,12 @@ json unsliced_plates()
             list.push_back(i + 1);
     return list;
 }
+
+// UI thread only. The outcome of the latest handoff, for get_studio_state.
+json s_last_handoff;
+int  s_next_handoff = 1;
+
+json save_and_open_copy();
 } // namespace
 
 std::string handoff_file_name(const std::string &project_name, std::time_t now)
@@ -82,7 +89,31 @@ std::optional<std::string> bundle_short_version(const std::string &plist_text)
 
 bool same_version(const std::string &a, const std::string &b) { return version_numbers(a) == version_numbers(b); }
 
+json last_handoff_summary() { return s_last_handoff; }
+
 json open_in_official_studio(const json &)
+{
+    // Saving with G-code can outlast the bridge's UI timeout. Marked running, the client is told
+    // in_progress instead of timing out and retrying, which would open a second copy.
+    const std::string handoff_id = "h" + std::to_string(s_next_handoff++);
+    MutationScope     running("handoff_id", handoff_id);
+    s_last_handoff = {{"handoff_id", handoff_id}, {"status", "running"}};
+    try {
+        json result          = save_and_open_copy();
+        result["handoff_id"] = handoff_id;
+        s_last_handoff       = result;
+        return result;
+    } catch (const BridgeError &e) {
+        s_last_handoff = {{"handoff_id", handoff_id}, {"status", "failed"}, {"code", e.code}, {"message", e.what()}};
+        throw;
+    } catch (const std::exception &e) {
+        s_last_handoff = {{"handoff_id", handoff_id}, {"status", "failed"}, {"code", "handoff_failed"}, {"message", e.what()}};
+        throw BridgeError(500, "handoff_failed", std::string("Handoff failed: ") + e.what());
+    }
+}
+
+namespace {
+json save_and_open_copy()
 {
     if (!fs::exists(fs::path(OFFICIAL_APP) / "Contents"))
         throw BridgeError(404, "official_app_missing", std::string("The official Bambu Studio is not installed at ") + OFFICIAL_APP + ". Nothing was saved.");
@@ -136,5 +167,6 @@ json open_in_official_studio(const json &)
         result["warnings"] = std::move(warnings);
     return result;
 }
+} // namespace
 
 }}} // namespace Slic3r::GUI::AgentBridge

@@ -27,7 +27,7 @@ void require_can_mutate()
     if (modal_dialog_open())
         throw BridgeError(409, "waiting_for_user", dialog_description() + " is open in Studio. Nothing was changed. Ask the user to close it, then try again.");
     if (!running_mutation_id().empty())
-        throw BridgeError(409, "waiting_for_user", "Change " + running_mutation_id() + " has not finished. Check get_studio_state.");
+        throw BridgeError(409, "waiting_for_user", "Change or handoff " + running_mutation_id() + " has not finished. Check get_studio_state.");
     if (ui_thread_is_mid_operation() || plater.is_loading_project())
         throw BridgeError(503, "studio_busy", "Studio is partway through an operation. Nothing was changed. Try again shortly.");
     // Studio would cancel the slice to apply a change, which a client that started it would not expect.

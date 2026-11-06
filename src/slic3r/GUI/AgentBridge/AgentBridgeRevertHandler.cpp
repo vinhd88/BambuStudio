@@ -51,8 +51,12 @@ const ConfigOption *current(const Target &target, const JournalValue &value)
 
 json revert_settings(const ChangeRecord &record)
 {
-    const Target target = parse_target(record.target);
-    if (target_identity(target) != record.restore)
+    const Target target   = parse_target(record.target);
+    const json   identity = target_identity(target, touched_tabs(record.values));
+    if (identity.value("presets", json()) != record.restore.value("presets", json()))
+        return refused("Another preset is selected than when the agent made this change, so its before-values belong to a different preset.",
+                       json::array({"presets"}));
+    if (identity != record.restore)
         return refused("The object or part at that number is not the one the agent changed; objects were added, removed or reordered since.");
 
     json changed = json::array();
@@ -120,14 +124,20 @@ json revert_process_preset(const ChangeRecord &record)
     const std::string before = record.restore.value("before", "");
     const std::string after  = record.restore.value("after", "");
     const std::string now    = prints.get_selected_preset_name();
-    if (now == before && unsaved_edits(prints) == record.restore["before_edits"])
+    // A retry after a revert that failed partway: the preset is back, but the slots may not be.
+    // Only then: if the user put the preset back by hand, their slot picks are theirs.
+    const bool retry       = record.outcome.contains("revert") && record.outcome["revert"].value("status", "") == "failed";
+    const bool preset_back = now == before && unsaved_edits(prints) == record.restore["before_edits"];
+    if (preset_back && !retry)
         return reverted(json::array());
-    if (now != after || unsaved_edits(prints) != record.restore["after_edits"])
+    if (!preset_back && (now != after || unsaved_edits(prints) != record.restore["after_edits"]))
         return refused("The process preset or its unsaved edits have changed since the agent switched it.", json::array({"process_preset"}));
 
-    switch_process_preset(before, !record.restore["after_edits"].empty());
+    if (!preset_back)
+        switch_process_preset(before, !record.restore["after_edits"].empty());
     json not_restored = json::array();
-    for (int slot : restore_filament_slots(record.restore.value("before_slots", std::vector<std::string>())))
+    for (int slot : restore_filament_slots(record.restore.value("before_slots", std::vector<std::string>()),
+                                           record.restore.value("after_slots", std::vector<std::string>())))
         not_restored.push_back({{"slot", slot}});
     if (prints.get_selected_preset_name() != before)
         not_restored.push_back({{"key", "process_preset"}, {"expected", before}, {"now", prints.get_selected_preset_name()}});
@@ -153,26 +163,54 @@ json revert_object_filament(const ChangeRecord &record)
 }
 } // namespace
 
+// Marks the newest change as done with, leaving Studio as it is, so older changes can be reverted.
+// Only after its revert was refused or failed: an agent must not skip a change it could undo.
+json skip_change(ChangeJournal &journal, ChangeRecord &newest)
+{
+    const std::string last_revert = newest.outcome.contains("revert") ? newest.outcome["revert"].value("status", "") : "";
+    if (last_revert != "refused" && last_revert != "failed")
+        throw BridgeError(409, "not_skippable", "Change " + newest.change_id + " can be reverted; try revert_change without skip first. Only a change whose revert was refused or failed can be skipped.");
+    const json result = {{"status", "skipped"},
+                         {"change_id", newest.change_id},
+                         {"message", "Nothing was changed in Studio; " + newest.change_id + "'s values stay as they are. Older changes can be reverted now."}};
+    newest.outcome["revert"] = result;
+    journal.mark_reverted(newest.change_id);
+    return result;
+}
+
 json revert_change(const json &args)
 {
     ChangeJournal    &journal   = change_journal();
     ChangeRecord     *newest    = journal.newest_active();
     const std::string requested = string_arg(args, "change_id");
+    const bool        skip      = bool_arg(args, "skip", false);
     if (!requested.empty()) {
         const ChangeRecord *record = journal.find(requested);
         if (record == nullptr)
             throw BridgeError(404, "not_found", "No change " + requested + " in this project. The journal lasts one Studio session and is per project.");
-        if (record->reverted)
-            return {{"status", "already_reverted"}, {"change_id", requested}};
+        if (record->reverted) {
+            const bool skipped = record->outcome.contains("revert") && record->outcome["revert"].value("status", "") == "skipped";
+            return {{"status", skipped ? "already_skipped" : "already_reverted"}, {"change_id", requested}};
+        }
         if (record != newest)
             throw BridgeError(409, "revert_order", "Changes are reverted newest first. Revert " + newest->change_id + " first.");
     }
     if (newest == nullptr)
         return {{"status", "nothing_to_revert"}};
+    if (skip) {
+        if (requested.empty())
+            throw BridgeError(400, "invalid_args", "skip needs change_id: the change to skip, which must be the newest not yet reverted.");
+        return skip_change(journal, *newest);
+    }
 
     const std::string change_id = newest->change_id;
     MutationScope     running("change_id", change_id);
-    json              result;
+    // Recorded so a failed revert can be skipped later.
+    const auto note_failure = [&](const std::string &code, const std::string &message) {
+        if (ChangeRecord *record = journal.find(change_id))
+            record->outcome["revert"] = {{"status", "failed"}, {"code", code}, {"message", message}};
+    };
+    json result;
     try {
         switch (newest->kind) {
         case ChangeKind::FilamentPreset: result = revert_filament_preset(*newest); break;
@@ -180,11 +218,16 @@ json revert_change(const json &args)
         case ChangeKind::ObjectFilament: result = revert_object_filament(*newest); break;
         default:                         result = revert_settings(*newest); break;
         }
-    } catch (const BridgeError &) {
+    } catch (const BridgeError &e) {
+        // Busy or waiting answers go away on a retry; only real failures make a change skippable.
+        if (e.status >= 500 && e.status != 503)
+            note_failure(e.code, e.what());
         throw;
     } catch (const std::exception &e) {
         BOOST_LOG_TRIVIAL(error) << "agent bridge: revert of " << change_id << " failed: " << e.what();
-        throw BridgeError(500, "revert_failed", "Reverting " + change_id + " failed partway: " + e.what() + ". Check get_settings.");
+        const std::string message = "Reverting " + change_id + " failed partway: " + e.what() + ". Check get_settings. If it keeps failing, revert_change with skip moves past it.";
+        note_failure("revert_failed", message);
+        throw BridgeError(500, "revert_failed", message);
     }
     result["change_id"] = change_id;
     // A dialog can outlast the call; get_studio_state's last_change then carries the outcome.

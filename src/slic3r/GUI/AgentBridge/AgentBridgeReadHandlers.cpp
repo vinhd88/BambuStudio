@@ -8,6 +8,7 @@
 #include "slic3r/GUI/Plater.hpp"
 
 #include "AgentBridgeApplyHandlers.hpp"
+#include "AgentBridgeHandoff.hpp"
 #include "AgentBridgeArgs.hpp"
 #include "AgentBridgeModalGuard.hpp"
 #include "AgentBridgeMutationGate.hpp"
@@ -66,6 +67,8 @@ json get_studio_state(const json &)
         state["running"] = running;
     if (json last = last_change_summary(); !last.is_null())
         state["last_change"] = std::move(last);
+    if (json handoff = last_handoff_summary(); !handoff.is_null())
+        state["last_handoff"] = std::move(handoff);
     return state;
 }
 

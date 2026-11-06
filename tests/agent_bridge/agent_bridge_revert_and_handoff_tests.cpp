@@ -7,6 +7,8 @@
 
 #include "slic3r/GUI/AgentBridge/AgentBridgeChangeJournal.hpp"
 #include "slic3r/GUI/AgentBridge/AgentBridgeHandoff.hpp"
+#include "slic3r/GUI/AgentBridge/AgentBridgePresetSelection.hpp"
+#include "libslic3r/PresetBundle.hpp"
 
 using namespace Slic3r;
 using namespace Slic3r::GUI::AgentBridge;
@@ -83,4 +85,26 @@ TEST_CASE("same_version compares numbers, not text", "[agent_bridge]")
     CHECK(same_version("02.09.01.70", "2.9.1.70"));
     CHECK_FALSE(same_version("02.09.01.70", "02.09.01.71"));
     CHECK_FALSE(same_version("02.09.01", "02.09.01.70"));
+}
+
+// unsaved_edits feeds select_process_preset's refusal and the before/after edits a revert compares,
+// so it must list every key that makes the preset dirty.
+TEST_CASE("unsaved_edits lists the keys that make a preset dirty", "[agent_bridge]")
+{
+    PresetBundle bundle;
+    PresetCollection &prints = bundle.prints;
+    REQUIRE_FALSE(prints.current_is_dirty());
+    CHECK(unsaved_edits(prints).empty());
+
+    prints.get_edited_preset().config.set_key_value("outer_wall_speed", new ConfigOptionFloats({152.}));
+    prints.get_edited_preset().config.set_key_value("filter_out_gap_fill", new ConfigOptionFloat(0.5));
+    prints.get_edited_preset().config.set_key_value("print_settings_id", new ConfigOptionString("some other preset"));
+    REQUIRE(prints.current_is_dirty());
+    const auto edits = unsaved_edits(prints);
+    CHECK(edits.contains("outer_wall_speed"));
+    CHECK(edits.contains("filter_out_gap_fill"));
+
+    const auto rejection = unsaved_changes_rejection(prints, "The process preset");
+    CHECK(rejection["code"] == "unsaved_changes");
+    CHECK(rejection["unsaved_keys"] == nlohmann::json::array({"filter_out_gap_fill", "outer_wall_speed"}));
 }

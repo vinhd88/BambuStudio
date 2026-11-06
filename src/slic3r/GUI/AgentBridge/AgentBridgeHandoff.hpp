@@ -14,6 +14,10 @@ namespace Slic3r { namespace GUI { namespace AgentBridge {
 // its path and its unsaved state are left alone. No caller-supplied path is ever opened. UI thread.
 nlohmann::json open_in_official_studio(const nlohmann::json &args);
 
+// Outcome of the latest handoff in this Studio session (running, opened, rejected or failed), or
+// null. For get_studio_state, where a client looks after an in_progress answer.
+nlohmann::json last_handoff_summary();
+
 // GUI-free parts, for tests.
 
 // A file name for the copy: the project name with anything unsafe replaced, then a timestamp.

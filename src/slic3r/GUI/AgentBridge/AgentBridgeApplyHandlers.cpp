@@ -5,6 +5,7 @@
 
 #include <boost/log/trivial.hpp>
 
+#include "libslic3r/PresetBundle.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
 #include "slic3r/GUI/Plater.hpp"
 #include "slic3r/GUI/Tab.hpp"
@@ -100,13 +101,37 @@ json last_change_summary()
     return summary;
 }
 
-json target_identity(const Target &target)
+std::set<int> touched_tabs(const std::vector<JournalValue> &values)
+{
+    std::set<int> tabs;
+    for (const JournalValue &value : values)
+        tabs.insert(value.tab);
+    return tabs;
+}
+
+json target_identity(const Target &target, const std::set<int> &tabs)
 {
     json identity = json::object();
     if (target.object != nullptr)
         identity["object_id"] = target.object->id().id;
     if (target.part != nullptr)
         identity["part_id"] = target.part->id().id;
+    if (target.scope == ApplyScope::Global && !tabs.empty()) {
+        // Global settings live in the selected presets: a revert after another preset was picked
+        // would write the old values into that one. Only the tabs the change touched count, so a
+        // filament pick does not block reverting a process setting.
+        const PresetBundle &presets = *wxGetApp().preset_bundle;
+        json                names   = json::object();
+        if (tabs.count(Preset::TYPE_PRINT))
+            names["process"] = presets.prints.get_selected_preset_name();
+        if (tabs.count(Preset::TYPE_FILAMENT))
+            names["filament"] = presets.filaments.get_edited_preset().name;
+        // The bed types on offer depend on the printer.
+        if (tabs.count(PROJECT_TAB))
+            names["printer"] = presets.printers.get_selected_preset_name();
+        if (!names.empty())
+            identity["presets"] = std::move(names);
+    }
     return identity;
 }
 
@@ -119,6 +144,17 @@ void record_after_values(const std::string &change_id, const Target &target)
         value.after       = clone_or_null(config_of(target, static_cast<Preset::Type>(value.tab)).option(value.key));
         value.after_known = true;
     }
+}
+
+[[noreturn]] void fail_change(const std::string &change_id, const json &after, const std::exception &error)
+{
+    BOOST_LOG_TRIVIAL(error) << "agent bridge: " << change_id << " failed: " << error.what();
+    if (ChangeRecord *record = change_journal().find(change_id)) {
+        record->restore.update(after);
+        record->outcome = {{"status", "failed"}, {"reason", error.what()}};
+    }
+    note_settings_changed();
+    throw BridgeError(500, "change_failed", "Change " + change_id + " failed partway: " + error.what() + ". Check get_studio_state; revert_change can undo what landed.");
 }
 
 json apply_settings(const json &args)
@@ -146,7 +182,7 @@ json apply_settings(const json &args)
         values.insert(values.end(), std::make_move_iterator(tab_values.begin()), std::make_move_iterator(tab_values.end()));
     }
     const std::string change_id = change_journal().begin(target.description, std::move(values));
-    change_journal().find(change_id)->restore = target_identity(target);
+    change_journal().find(change_id)->restore = target_identity(target, touched_tabs(change_journal().find(change_id)->values));
     result["change_id"]         = change_id;
     MutationScope running("change_id", change_id);
 

@@ -25,8 +25,9 @@ nlohmann::json unsaved_edits(const PresetCollection &presets);
 void switch_process_preset(const std::string &name, bool transfer);
 
 // For revert_change: slots whose preset differs from `presets`, set back through the sidebar.
-// Returns the slots (1-based) that could not be set back.
-std::vector<int> restore_filament_slots(const std::vector<std::string> &presets);
+// A slot that no longer holds what `agent_left` says (the user picked it since) or whose filament
+// has unsaved edits is left alone. Returns the slots (1-based) not set back.
+std::vector<int> restore_filament_slots(const std::vector<std::string> &presets, const std::vector<std::string> &agent_left);
 
 }} // namespace GUI::AgentBridge
 } // namespace Slic3r

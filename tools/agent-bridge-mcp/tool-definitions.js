@@ -13,7 +13,7 @@ const noArgs = { type: 'object', properties: {}, additionalProperties: false };
 export const TOOLS = [
   {
     name: 'get_studio_state',
-    description: 'Quick status of Bambu Studio: open project, unsaved changes, current plate, slicing state, whether a dialog is open, selected presets. Call this first. Works while a dialog is open; other tools return studio_busy then. Also reports dialog_title, a running change or job, and last_change: the outcome of the latest apply_settings, including one that waited on a dialog.',
+    description: 'Quick status of Bambu Studio: open project, unsaved changes, current plate, slicing state, whether a dialog is open, selected presets. Call this first. Works while a dialog is open; other tools return studio_busy then. Also reports dialog_title, a running change or job, last_change: the outcome of the latest agent change, including one that waited on a dialog, and last_handoff: the outcome of the latest open_in_official_studio.',
     inputSchema: noArgs,
   },
   {
@@ -174,16 +174,19 @@ export const TOOLS = [
   },
   {
     name: 'revert_change',
-    description: 'Undo the newest agent change not yet undone: settings, filament or process preset picks, or object filament. Changes are undone newest first; call again to go further back. status refused (with changed_since) means the user changed those values afterwards, and nothing was reverted. not_restored lists values Studio set differently while restoring. Works on this Studio session\'s changes in the open project only.',
+    description: 'Undo the newest agent change not yet undone: settings, filament or process preset picks, or object filament. Changes are undone newest first; call again to go further back. status refused (with changed_since) means the user changed those values afterwards, or picked another preset, and nothing was reverted. A refused or failed change blocks older ones; after telling the user, call again with skip true and its change_id to leave it as it is and move past it. not_restored lists values Studio set differently while restoring. Works on this Studio session\'s changes in the open project only.',
     inputSchema: {
       type: 'object',
-      properties: { change_id: { type: 'string', description: 'Optional check: must be the newest change not yet undone.' } },
+      properties: {
+        change_id: { type: 'string', description: 'Optional check: must be the newest change not yet undone. Required with skip.' },
+        skip: { type: 'boolean', description: 'Leave this change as it is and mark it done, so older changes can be reverted. Only after its revert was refused or failed. Default false.' },
+      },
       additionalProperties: false,
     },
   },
   {
     name: 'open_in_official_studio',
-    description: 'Hand the project to the official Bambu Studio for printing: saves a copy with this build\'s G-code to a temporary folder and opens it there. The current plate must be sliced and current (slice_plate, then get_job done). The project here, its file and its unsaved state are untouched. The user starts the print in the official app; no tool can. Reports the version of each app and this build\'s estimate, to compare with the official one.',
+    description: 'Hand the project to the official Bambu Studio for printing: saves a copy with this build\'s G-code to a temporary folder and opens it there. The current plate must be sliced and current (slice_plate, then get_job done). The project here, its file and its unsaved state are untouched. The user starts the print in the official app; no tool can. Reports the version of each app and this build\'s estimate, to compare with the official one. Saving can take a while: status in_progress with a handoff_id means it is still running; do not call again, read last_handoff in get_studio_state.',
     inputSchema: noArgs,
   },
 ];

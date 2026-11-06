@@ -119,7 +119,12 @@ json select_filament(const json &args)
     result["change_id"]                     = change_id;
     MutationScope running("change_id", change_id);
 
-    combo.SelectAndNotify(*row);
+    try {
+        combo.SelectAndNotify(*row);
+    } catch (const std::exception &e) {
+        // What the slot holds now is what a revert must find, or the record blocks every older one.
+        fail_change(change_id, {{"after", presets.filament_presets[slot]}}, e);
+    }
     note_settings_changed();
 
     const std::string after = presets.filament_presets[slot];
@@ -197,7 +202,11 @@ json set_object_filament(const json &args)
     change_journal().find(change_id)->restore = {{"object_id", object.id().id}, {"before", before}, {"after", after}};
     result["change_id"]                     = change_id;
     MutationScope running("change_id", change_id);
-    restore_object_filament_state(object, after, "Agent filament change " + change_id);
+    try {
+        restore_object_filament_state(object, after, "Agent filament change " + change_id);
+    } catch (const std::exception &e) {
+        fail_change(change_id, {{"after", object_filament_state(object)}}, e);
+    }
 
     result["status"] = "applied";
     change_journal().finish(change_id, result);
