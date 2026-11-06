@@ -7,9 +7,11 @@
 #include <boost/log/trivial.hpp>
 #include <wx/stdpaths.h>
 
+#include "libslic3r/AppConfig.hpp"
 #include "libslic3r/Utils.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
 
+#include "AgentBridgeDiscoveryFile.hpp"
 #include "AgentBridgeModalGuard.hpp"
 #include "AgentBridgeMutationGate.hpp"
 #include "AgentBridgeServer.hpp"
@@ -24,6 +26,8 @@ namespace Slic3r { namespace GUI { namespace AgentBridge {
 namespace {
 constexpr std::chrono::seconds UI_CALL_TIMEOUT(3);
 const char *const              DISCOVERY_FILE_NAME = "agent-bridge.json";
+// App config switch for agent access. Missing means on: the agent build exists for this.
+const char *const              ENABLED_KEY         = "agent_bridge_enabled";
 
 std::unique_ptr<AgentBridgeServer> s_server;
 
@@ -62,10 +66,41 @@ std::function<void(BridgeResponse)> name_open_dialog(std::function<void(BridgeRe
 }
 } // namespace
 
+bool bridge_enabled() { return wxGetApp().app_config->get(ENABLED_KEY) != "false"; }
+
+void set_bridge_enabled(bool enabled)
+{
+    wxGetApp().app_config->set(ENABLED_KEY, enabled ? "true" : "false");
+    // Saved now: turning access off must hold even if Studio crashes before its next save.
+    wxGetApp().app_config->save();
+    if (enabled)
+        start_bridge();
+    else
+        stop_bridge();
+}
+
+void reset_bridge_token()
+{
+    // A new server makes a new token and port and rewrites the discovery file. The --mcp-stdio
+    // helper reads that file on every call, so connected AI apps carry on; anything holding the
+    // old token is locked out.
+    if (!s_server)
+        return;
+    stop_bridge();
+    start_bridge();
+}
+
 void start_bridge()
 {
     if (s_server)
         return;
+    if (!bridge_enabled()) {
+        // Off means no discovery file either, even one a crash left behind.
+        if (!uses_default_data_dir())
+            remove_stale_discovery_file((fs::path(data_dir()) / DISCOVERY_FILE_NAME).string());
+        BOOST_LOG_TRIVIAL(info) << "agent bridge: off in settings";
+        return;
+    }
     try {
         if (uses_default_data_dir()) {
             BOOST_LOG_TRIVIAL(warning) << "agent bridge: not started, Studio is using the default data folder. Pass --datadir to enable it.";

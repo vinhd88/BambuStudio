@@ -9,6 +9,8 @@
 #ifndef _WIN32
 #include <fcntl.h>
 #include <unistd.h>
+#include <cerrno>
+#include <csignal>
 #else
 #include <process.h>
 #endif
@@ -59,6 +61,26 @@ void write_discovery_file(const std::string &path, uint16_t port, const std::str
 {
     const nlohmann::json discovery = {{"port", port}, {"token", token}, {"pid", current_pid()}};
     write_owner_only_file(path, discovery.dump());
+}
+
+void remove_stale_discovery_file(const std::string &path)
+{
+    // Left behind when Studio did not quit cleanly. Kept if its process still runs: that is
+    // another instance on this data folder, and the file is its own.
+    try {
+        boost::nowide::ifstream in(path);
+        if (!in)
+            return;
+        nlohmann::json discovery;
+        in >> discovery;
+        const int pid = discovery.value("pid", 0);
+        if (pid > 0 && (::kill(pid, 0) == 0 || errno == EPERM))
+            return;
+    } catch (const std::exception &) {
+        // Unreadable: no client can use it either, so it goes.
+    }
+    boost::system::error_code ignored;
+    fs::remove(path, ignored);
 }
 
 void remove_discovery_file(const std::string &path, const std::string &token)

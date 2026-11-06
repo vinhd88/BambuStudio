@@ -92,6 +92,7 @@ using namespace nlohmann;
 
 // BBS: for the out-of-memory new-handler (bbl_out_of_memory_handler)
 #include <new> // std::set_new_handler
+#include "slic3r/GUI/AgentBridge/AgentBridgeMcpStdio.hpp"
 #if defined(__APPLE__)
 #include <CoreFoundation/CoreFoundation.h> // CFUserNotificationDisplayNotice
 #elif !defined(_MSC_VER) && !defined(__MINGW32__)
@@ -9278,6 +9279,10 @@ extern "C" {
 #else /* _MSC_VER */
 int main(int argc, char **argv)
 {
+    // Agent build: the MCP server AI apps launch. Before any CLI or GUI setup, so it starts fast,
+    // opens no window and writes nothing but JSON-RPC to stdout.
+    if (Slic3r::GUI::AgentBridge::is_mcp_stdio_run(argc, argv))
+        return Slic3r::GUI::AgentBridge::run_mcp_stdio(argc, argv);
     std::set_new_handler(bbl_out_of_memory_handler);
     return CLI().run(argc, argv);
 }
