@@ -8,6 +8,7 @@ add_executable(${_TEST_NAME}_tests
     agent_bridge_server_tests.cpp
     agent_bridge_json_tests.cpp
     agent_bridge_apply_tests.cpp
+    agent_bridge_revert_and_handoff_tests.cpp
 )
 
 target_link_libraries(${_TEST_NAME}_tests test_gui)

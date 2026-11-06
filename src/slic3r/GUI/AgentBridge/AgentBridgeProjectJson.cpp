@@ -53,6 +53,8 @@ json part_to_json(const ModelVolume &volume, size_t index)
 json object_to_json(const ModelObject &object, size_t index)
 {
     json out = {{"object", index + 1}, {"name", object.name}, {"instances", object.instances.size()}, {"printable", object.printable}};
+    // Parts without a filament of their own follow this one.
+    out["filament"] = object.config.has("extruder") && object.config.opt_int("extruder") > 0 ? object.config.opt_int("extruder") : 1;
 
     json overrides = override_keys(object.config);
     if (!overrides.empty())

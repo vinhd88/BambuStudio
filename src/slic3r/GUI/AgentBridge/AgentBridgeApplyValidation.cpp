@@ -24,19 +24,6 @@ PresetBundle &bundle() { return *wxGetApp().preset_bundle; }
 
 
 // The filament tab edits one preset at a time, and switching it can raise an unsaved-changes dialog.
-std::optional<std::string> filament_slot_rejection(const Target &target)
-{
-    PresetBundle     &presets  = bundle();
-    const std::string selected = presets.filaments.get_selected_preset_name();
-    if (target.filament_slot < 0) {
-        if (presets.filament_presets.size() > 1)
-            return "this project has several filament slots; give slot. Only the one selected on the Filament tab (" + selected + ") can be changed";
-        return std::nullopt;
-    }
-    if (presets.filament_presets[target.filament_slot] != selected)
-        return "slot " + std::to_string(target.filament_slot + 1) + " is not selected on the Filament tab (" + selected + " is), so it cannot be changed yet";
-    return std::nullopt;
-}
 
 SafetyLimits current_limits()
 {
@@ -61,8 +48,25 @@ SafetyLimits current_limits()
     return limits;
 }
 
-Preset::Type tab_of(const std::string &key)
+// The sidebar offers only the bed types this printer has; Studio falls back to another one otherwise.
+std::optional<std::string> bed_type_rejection(const ConfigOption &value)
 {
+    const auto &offered = wxGetApp().plater()->sidebar().get_cur_combox_bed_types();
+    if (std::find(offered.begin(), offered.end(), static_cast<BedType>(value.getInt())) != offered.end())
+        return std::nullopt;
+    const ConfigOptionDef *def   = print_config_def.get("curr_bed_type");
+    std::string            names;
+    for (BedType type : offered)
+        for (const auto &[name, number] : *def->enum_keys_map)
+            if (number == static_cast<int>(type))
+                names += (names.empty() ? "" : ", ") + name;
+    return "this printer does not offer that bed type; it offers " + (names.empty() ? std::string("none") : names);
+}
+
+Preset::Type tab_of(const Target &target, const std::string &key)
+{
+    if (target.scope == ApplyScope::Global && key == "curr_bed_type")
+        return PROJECT_TAB;
     const SettingPlace *place = find_setting_place(key);
     return place != nullptr && std::string(place->tab) == "filament" ? Preset::TYPE_FILAMENT : Preset::TYPE_PRINT;
 }
@@ -71,7 +75,7 @@ Preset::Type tab_of(const std::string &key)
 // What a key resolves to at this level now. A level that does not set it inherits the global value.
 const ConfigOption *effective_value(const Target &target, const std::string &key)
 {
-    if (const ConfigOption *own = config_of(target, tab_of(key)).option(key))
+    if (const ConfigOption *own = config_of(target, tab_of(target, key)).option(key))
         return own;
     if (const ConfigOption *global = bundle().prints.get_edited_preset().config.option(key))
         return global;
@@ -79,6 +83,20 @@ const ConfigOption *effective_value(const Target &target, const std::string &key
     return def != nullptr ? def->default_value.get() : nullptr;
 }
 } // namespace
+
+std::optional<std::string> filament_slot_rejection(const Target &target)
+{
+    PresetBundle     &presets  = bundle();
+    const std::string selected = presets.filaments.get_selected_preset_name();
+    if (target.filament_slot < 0) {
+        if (presets.filament_presets.size() > 1)
+            return "this project has several filament slots; give slot. Only the one selected on the Filament tab (" + selected + ") can be changed";
+        return std::nullopt;
+    }
+    if (presets.filament_presets[target.filament_slot] != selected)
+        return "slot " + std::to_string(target.filament_slot + 1) + " is not selected on the Filament tab (" + selected + " is), so it cannot be changed yet";
+    return std::nullopt;
+}
 
 Target parse_target(const json &args)
 {
@@ -88,6 +106,8 @@ Target parse_target(const json &args)
 
     if (scope == "global") {
         target.filament_slot = optional_index_arg(args, "slot", bundle().filament_presets.size());
+        if (target.filament_slot >= 0)
+            target.description["slot"] = target.filament_slot + 1;
         return target;
     }
     if (scope == "plate") {
@@ -137,7 +157,7 @@ const DynamicPrintConfig &config_of(const Target &target, Preset::Type tab_type)
     case ApplyScope::Object:      return target.object->config.get();
     case ApplyScope::Part:        return target.part->config.get();
     case ApplyScope::HeightRange: return target.object->layer_config_ranges.at(target.range).get();
-    default:                      return *wxGetApp().get_tab(tab_type)->get_config();
+    default:                      return tab_type == PROJECT_TAB ? bundle().project_config : *wxGetApp().get_tab(tab_type)->get_config();
     }
 }
 
@@ -152,7 +172,7 @@ ValidatedRequest validate(const Target &target, const json &changes)
             reject(key, *reason);
             continue;
         }
-        const Preset::Type tab_type = tab_of(key);
+        const Preset::Type tab_type = tab_of(target, key);
         if (target.scope == ApplyScope::Global && tab_type == Preset::TYPE_FILAMENT) {
             if (const auto reason = filament_slot_rejection(target)) {
                 reject(key, *reason);
@@ -174,6 +194,12 @@ ValidatedRequest validate(const Target &target, const json &changes)
         if (const auto reason = value_rejection(key, def, *parsed, limits)) {
             reject(key, *reason);
             continue;
+        }
+        if (tab_type == PROJECT_TAB) {
+            if (const auto reason = bed_type_rejection(*parsed)) {
+                reject(key, *reason);
+                continue;
+            }
         }
         if (*parsed == *current && config_of(target, tab_type).has(key)) {
             request.unchanged.push_back(key);

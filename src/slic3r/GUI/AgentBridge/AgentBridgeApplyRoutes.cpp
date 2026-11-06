@@ -90,15 +90,14 @@ private:
     std::map<ObjectBase *, ModelConfig *>  m_previous;
 };
 
-// Model tabs copy their current values into the plater's config, which must end up with global ones.
-// Also makes Studio re-check the plate, since slicing state does not depend on any tab.
+} // namespace
+
 void refresh_after_model_change()
 {
     wxGetApp().mainframe->on_config_changed(wxGetApp().get_tab(Preset::TYPE_PRINT)->get_config());
     wxGetApp().params_panel()->notify_object_config_changed();
     wxGetApp().plater()->update();
 }
-} // namespace
 
 void apply_to_preset_tab(Preset::Type tab_type, const std::vector<SettingChange> &changes)
 {

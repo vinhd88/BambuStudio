@@ -514,6 +514,16 @@ GUI/AgentBridge/AgentBridgeArgs.hpp
 GUI/AgentBridge/AgentBridgePresetHandlers.cpp
 GUI/AgentBridge/AgentBridgeSettingsDefinitionJson.cpp
 GUI/AgentBridge/AgentBridgeTypes.hpp
+    GUI/AgentBridge/AgentBridgeFilamentHandlers.cpp
+    GUI/AgentBridge/AgentBridgeFilamentHandlers.hpp
+    GUI/AgentBridge/AgentBridgeHandoff.cpp
+    GUI/AgentBridge/AgentBridgeHandoff.hpp
+    GUI/AgentBridge/AgentBridgePresetSelection.cpp
+    GUI/AgentBridge/AgentBridgePresetSelection.hpp
+    GUI/AgentBridge/AgentBridgeRevertHandler.cpp
+    GUI/AgentBridge/AgentBridgeRevertHandler.hpp
+    GUI/AgentBridge/AgentBridgeTargetRoutes.cpp
+    GUI/AgentBridge/AgentBridgeTargetRoutes.hpp
     GUI/AgentBridge/AgentBridgeUiThreadCall.cpp
     GUI/AgentBridge/AgentBridgeUiThreadCall.hpp
     Config/Snapshot.cpp

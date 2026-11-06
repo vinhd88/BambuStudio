@@ -18,7 +18,7 @@ export const TOOLS = [
   },
   {
     name: 'get_project',
-    description: 'The open project: plates with their object instances, objects with parts and height ranges, filament slots. Lists which settings are overridden at each level; read their values with get_settings. The sliced flag can be out of date for plates not on screen. All numbers count from 1, as in the Studio UI.',
+    description: 'The open project: plates with their object instances, objects (with the filament slot each prints with) with parts and height ranges, filament slots. Lists which settings are overridden at each level; read their values with get_settings. The sliced flag can be out of date for plates not on screen. All numbers count from 1, as in the Studio UI.',
     inputSchema: noArgs,
   },
   {
@@ -97,7 +97,7 @@ export const TOOLS = [
   },
   {
     name: 'apply_settings',
-    description: 'Change settings in the open project, live in the Studio UI. Validates every key first: if any fails, status is rejected, rejections gives a reason per key, and nothing changes. On success returns changes (before and after), linked_changes (settings Studio changed along with them), not_applied, warnings and a change_id. status waiting_for_user means Studio opened a dialog: ask the user to answer it, then read last_change from get_studio_state. Values use the forms get_settings returns; a single value on a list setting sets every element. Printer settings, G-code, machine limits and output naming are read-only. Temperatures must stay in the filament range and speeds within machine limits. Does not save the project.',
+    description: 'Change settings in the open project, live in the Studio UI. Validates every key first: if any fails, status is rejected, rejections gives a reason per key, and nothing changes. On success returns changes (before and after), linked_changes (settings Studio changed along with them), not_applied, warnings and a change_id. status waiting_for_user means Studio opened a dialog: ask the user to answer it, then read last_change from get_studio_state. Values use the forms get_settings returns; a single value on a list setting sets every element. Printer settings, G-code, machine limits and output naming are read-only. curr_bed_type at scope global sets the project-wide bed type, as the sidebar does; at scope plate, for one plate. Temperatures must stay in the filament range and speeds within machine limits. Does not save the project.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -131,5 +131,59 @@ export const TOOLS = [
       required: ['job_id'],
       additionalProperties: false,
     },
+  },
+  {
+    name: 'select_filament',
+    description: 'Pick the filament preset for a project slot, as choosing it in the sidebar does; the slot keeps its colour. Only presets Studio lists for the printer are accepted; others are rejected with a reason. status rejected with code unsaved_changes means the slot\'s preset has unsaved edits: ask the user to save or discard them. Returns before, after and a change_id for revert_change.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        slot: { type: 'integer', minimum: 1, description: 'Project filament slot, as in get_project.' },
+        name: { type: 'string', description: 'Preset name from list_filaments.' },
+      },
+      required: ['slot', 'name'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'select_process_preset',
+    description: 'Switch the process preset, as picking it in the Process list does. If the current one has unsaved edits, status is rejected with code unsaved_changes and the edited keys, unless keep_changes is true: then Studio carries the edits over to the new preset (kept_changes lists them). linked_changes lists filament slots Studio switched because the old filament does not suit the new process. Returns a change_id for revert_change.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Preset name from list_presets with kind process.' },
+        keep_changes: { type: 'boolean', description: 'Carry unsaved edits over to the new preset. Default false.' },
+      },
+      required: ['name'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'set_object_filament',
+    description: 'Set which filament slot an object prints with, or one part or modifier of it, as the filament column in the object list does. Setting the object makes its parts follow it. One undo step in Studio. Returns a change_id for revert_change.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        object: { type: 'integer', minimum: 1 },
+        part: { type: 'integer', minimum: 1, description: 'Only for objects with several parts.' },
+        slot: { type: 'integer', minimum: 1, description: 'Filament slot to print with.' },
+      },
+      required: ['object', 'slot'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'revert_change',
+    description: 'Undo the newest agent change not yet undone: settings, filament or process preset picks, or object filament. Changes are undone newest first; call again to go further back. status refused (with changed_since) means the user changed those values afterwards, and nothing was reverted. not_restored lists values Studio set differently while restoring. Works on this Studio session\'s changes in the open project only.',
+    inputSchema: {
+      type: 'object',
+      properties: { change_id: { type: 'string', description: 'Optional check: must be the newest change not yet undone.' } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'open_in_official_studio',
+    description: 'Hand the project to the official Bambu Studio for printing: saves a copy with this build\'s G-code to a temporary folder and opens it there. The current plate must be sliced and current (slice_plate, then get_job done). The project here, its file and its unsaved state are untouched. The user starts the print in the official app; no tool can. Reports the version of each app and this build\'s estimate, to compare with the official one.',
+    inputSchema: noArgs,
   },
 ];

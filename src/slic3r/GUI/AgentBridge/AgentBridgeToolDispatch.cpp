@@ -7,9 +7,13 @@
 #include "slic3r/GUI/Plater.hpp"
 
 #include "AgentBridgeApplyHandlers.hpp"
+#include "AgentBridgeFilamentHandlers.hpp"
+#include "AgentBridgeHandoff.hpp"
 #include "AgentBridgeModalGuard.hpp"
 #include "AgentBridgeMutationGate.hpp"
+#include "AgentBridgePresetSelection.hpp"
 #include "AgentBridgeReadHandlers.hpp"
+#include "AgentBridgeRevertHandler.hpp"
 #include "AgentBridgeSliceJobs.hpp"
 
 using nlohmann::json;
@@ -43,6 +47,12 @@ const std::unordered_map<std::string, Tool> &tools()
         {"get_slice_result", {get_slice_result, Gate::Read}},
         {"apply_settings", {apply_settings, Gate::Mutate}},
         {"slice_plate", {slice_plate, Gate::Mutate}},
+        {"select_filament", {select_filament, Gate::Mutate}},
+        {"select_process_preset", {select_process_preset, Gate::Mutate}},
+        {"set_object_filament", {set_object_filament, Gate::Mutate}},
+        {"revert_change", {revert_change, Gate::Mutate}},
+        // Changes nothing, but saves a copy, which needs a quiet Studio just as a change does.
+        {"open_in_official_studio", {open_in_official_studio, Gate::Mutate}},
     };
     return table;
 }

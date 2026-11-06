@@ -94,6 +94,9 @@ std::optional<std::string> key_rejection(const std::string &key, ApplyScope scop
             return "cannot be set at this level";
         return std::nullopt;
     }
+    // At scope global, the bed type is the project-wide one the sidebar sets, not a preset value.
+    if (key == "curr_bed_type")
+        return std::nullopt;
     const SettingPlace *place = find_setting_place(key);
     if (place == nullptr)
         return "read-only: not on the process or filament tab";

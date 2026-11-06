@@ -30,6 +30,10 @@ void apply_to_object(ModelObject &object, const std::vector<SettingChange> &chan
 void apply_to_part(ModelObject &object, ModelVolume &part, const std::vector<SettingChange> &changes);
 void apply_to_height_range(ModelObject &object, const t_layer_height_range &range, const std::vector<SettingChange> &changes);
 
+// Model tabs copy their current values into the plater's config, which must end up with global ones.
+// Also makes Studio re-check the plate, since slicing state does not depend on any tab.
+void refresh_after_model_change();
+
 }}} // namespace Slic3r::GUI::AgentBridge
 
 #endif

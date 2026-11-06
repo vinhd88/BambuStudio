@@ -372,12 +372,18 @@ TEST_CASE("review fixes: limits on units that also take a percentage", "[agent_b
 
 TEST_CASE("review fixes: plate keys are not taken at global scope", "[agent_bridge]")
 {
-    for (const char *key : {"curr_bed_type", "first_layer_sequence_choice", "other_layers_sequence_choice"}) {
+    for (const char *key : {"first_layer_sequence_choice", "other_layers_sequence_choice"}) {
         INFO(key);
         REQUIRE(key_rejection(key, ApplyScope::Global));
+        CHECK(key_rejection(key, ApplyScope::Global)->find("scope plate") != std::string::npos);
     }
-    CHECK(key_rejection("curr_bed_type", ApplyScope::Global)->find("scope plate") != std::string::npos);
     CHECK_FALSE(key_rejection("curr_bed_type", ApplyScope::Plate));
+}
+
+TEST_CASE("the bed type is taken at global scope, as the project-wide one", "[agent_bridge]")
+{
+    CHECK_FALSE(key_rejection("curr_bed_type", ApplyScope::Global));
+    CHECK(key_rejection("curr_bed_type", ApplyScope::Object));
 }
 
 TEST_CASE("review fixes: text list elements keep separators and quotes", "[agent_bridge]")

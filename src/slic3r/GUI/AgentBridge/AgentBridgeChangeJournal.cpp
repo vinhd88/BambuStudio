@@ -16,12 +16,13 @@ void ChangeJournal::set_project(const std::string &project_id)
     m_project_id = project_id;
 }
 
-std::string ChangeJournal::begin(nlohmann::json target, std::vector<JournalValue> values)
+std::string ChangeJournal::begin(nlohmann::json target, std::vector<JournalValue> values, ChangeKind kind)
 {
     if (m_records.size() >= MAX_RECORDS)
         m_records.pop_front();
     ChangeRecord record;
     record.change_id = "c" + std::to_string(m_next_id++);
+    record.kind      = kind;
     record.target    = std::move(target);
     record.values    = std::move(values);
     record.outcome   = {{"status", "running"}};
@@ -33,6 +34,18 @@ ChangeRecord *ChangeJournal::find(const std::string &change_id)
 {
     const auto it = std::find_if(m_records.begin(), m_records.end(), [&change_id](const ChangeRecord &record) { return record.change_id == change_id; });
     return it == m_records.end() ? nullptr : &*it;
+}
+
+ChangeRecord *ChangeJournal::newest_active()
+{
+    const auto it = std::find_if(m_records.rbegin(), m_records.rend(), [](const ChangeRecord &record) { return !record.reverted; });
+    return it == m_records.rend() ? nullptr : &*it;
+}
+
+void ChangeJournal::mark_reverted(const std::string &change_id)
+{
+    if (ChangeRecord *record = find(change_id))
+        record->reverted = true;
 }
 
 void ChangeJournal::add_values(const std::string &change_id, std::vector<JournalValue> values)

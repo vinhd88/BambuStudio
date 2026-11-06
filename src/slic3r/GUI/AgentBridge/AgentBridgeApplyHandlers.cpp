@@ -15,32 +15,24 @@
 #include "AgentBridgeMutationGate.hpp"
 #include "AgentBridgeSettingsJson.hpp"
 #include "AgentBridgeSliceJobs.hpp"
+#include "AgentBridgeTargetRoutes.hpp"
 
 using nlohmann::json;
 
 namespace Slic3r { namespace GUI { namespace AgentBridge {
 
 namespace {
+std::shared_ptr<ConfigOption> clone_or_null(const ConfigOption *option) { return option != nullptr ? std::shared_ptr<ConfigOption>(option->clone()) : nullptr; }
+
 std::vector<JournalValue> before_values(const Target &target, const std::vector<SettingChange> &changes, Preset::Type tab_type)
 {
     const DynamicPrintConfig &config = config_of(target, tab_type);
     std::vector<JournalValue> values;
     for (const SettingChange &change : changes) {
         const ConfigOption *before = config.option(change.key);
-        values.push_back({change.key, before != nullptr ? std::shared_ptr<ConfigOption>(before->clone()) : nullptr});
+        values.push_back({change.key, clone_or_null(before), tab_type});
     }
     return values;
-}
-
-void run_route(const Target &target, Preset::Type tab_type, const std::vector<SettingChange> &changes)
-{
-    switch (target.scope) {
-    case ApplyScope::Plate:       apply_to_plate(*target.plate, changes); break;
-    case ApplyScope::Object:      apply_to_object(*target.object, changes); break;
-    case ApplyScope::Part:        apply_to_part(*target.object, *target.part, changes); break;
-    case ApplyScope::HeightRange: apply_to_height_range(*target.object, target.range, changes); break;
-    default:                      apply_to_preset_tab(tab_type, changes); break;
-    }
 }
 
 json value_or_null(const ConfigOption *option) { return option != nullptr ? option_to_json(*option) : json(nullptr); }
@@ -68,7 +60,7 @@ void read_back(const std::string &change_id, const Target &target, Preset::Type 
                 result["not_applied"].push_back({{"key", key}, {"requested", option_to_json(*requested->value)}, {"reason", "Studio set a different value, possibly from the answer to a dialog"}});
         } else if ((old_value == nullptr || new_value == nullptr || *old_value != *new_value) && is_user_setting(key)) {
             result["linked_changes"].push_back({{"key", key}, {"before", value_or_null(old_value)}, {"after", value_or_null(new_value)}});
-            linked_values.push_back({key, old_value != nullptr ? std::shared_ptr<ConfigOption>(old_value->clone()) : nullptr});
+            linked_values.push_back({key, clone_or_null(old_value), tab_type});
         }
     }
     change_journal().add_values(change_id, std::move(linked_values));
@@ -108,6 +100,27 @@ json last_change_summary()
     return summary;
 }
 
+json target_identity(const Target &target)
+{
+    json identity = json::object();
+    if (target.object != nullptr)
+        identity["object_id"] = target.object->id().id;
+    if (target.part != nullptr)
+        identity["part_id"] = target.part->id().id;
+    return identity;
+}
+
+void record_after_values(const std::string &change_id, const Target &target)
+{
+    ChangeRecord *record = change_journal().find(change_id);
+    if (record == nullptr)
+        return;
+    for (JournalValue &value : record->values) {
+        value.after       = clone_or_null(config_of(target, static_cast<Preset::Type>(value.tab)).option(value.key));
+        value.after_known = true;
+    }
+}
+
 json apply_settings(const json &args)
 {
     const auto changes = args.find("changes");
@@ -133,6 +146,7 @@ json apply_settings(const json &args)
         values.insert(values.end(), std::make_move_iterator(tab_values.begin()), std::make_move_iterator(tab_values.end()));
     }
     const std::string change_id = change_journal().begin(target.description, std::move(values));
+    change_journal().find(change_id)->restore = target_identity(target);
     result["change_id"]         = change_id;
     MutationScope running("change_id", change_id);
 
@@ -147,17 +161,19 @@ json apply_settings(const json &args)
             const DynamicPrintConfig before = config_of(target, tab_type);
             for (const SettingChange &change : tab_changes)
                 BOOST_LOG_TRIVIAL(info) << "agent bridge: " << change_id << " " << target.description.dump() << " " << change.key << " = " << change.value->serialize();
-            run_route(target, tab_type, tab_changes);
+            apply_to_target(target, tab_type, tab_changes);
             read_back(change_id, target, tab_type, before, tab_changes, result);
         }
     } catch (const std::exception &e) {
         BOOST_LOG_TRIVIAL(error) << "agent bridge: " << change_id << " failed: " << e.what();
+        record_after_values(change_id, target);
         change_journal().finish(change_id, {{"status", "failed"}, {"reason", e.what()}});
         note_settings_changed();
         // Some keys may have landed. The journal holds their before-values under this id.
         throw BridgeError(500, "apply_failed", "Change " + change_id + " failed partway: " + e.what() + ". Some settings may have changed; check get_settings.");
     }
     note_settings_changed();
+    record_after_values(change_id, target);
     change_journal().finish(change_id, result);
     return result;
 }
