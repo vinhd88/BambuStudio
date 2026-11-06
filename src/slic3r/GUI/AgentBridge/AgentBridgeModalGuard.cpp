@@ -1,6 +1,9 @@
 #include "AgentBridgeModalGuard.hpp"
 
+#include <algorithm>
 #include <atomic>
+#include <iterator>
+#include <utility>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -14,29 +17,31 @@
 namespace Slic3r { namespace GUI { namespace AgentBridge {
 
 namespace {
-std::mutex               s_titles_mutex;
-std::vector<std::string> s_titles;
-std::atomic<int>         s_open_count{0};
+// Dialogs open now, oldest first, with their titles. Tracked by pointer, not by a bare count: the
+// hook can be installed or removed while a dialog is open (the Preferences page switches the bridge
+// on and off), and a dialog the hook never saw open must not be counted when it closes.
+std::mutex                                     s_open_mutex;
+std::vector<std::pair<wxDialog *, std::string>> s_open;
+std::atomic<int>                               s_open_count{0};
 
 class ModalHook : public wxModalDialogHook
 {
 protected:
     int Enter(wxDialog *dialog) override
     {
-        {
-            std::lock_guard<std::mutex> lock(s_titles_mutex);
-            s_titles.push_back(dialog != nullptr ? dialog->GetTitle().ToUTF8().data() : "");
-        }
-        ++s_open_count;
+        std::lock_guard<std::mutex> lock(s_open_mutex);
+        s_open.emplace_back(dialog, dialog != nullptr ? dialog->GetTitle().ToUTF8().data() : "");
+        s_open_count = static_cast<int>(s_open.size());
         return wxID_NONE; // Let the dialog show as usual.
     }
 
-    void Exit(wxDialog *) override
+    void Exit(wxDialog *dialog) override
     {
-        --s_open_count;
-        std::lock_guard<std::mutex> lock(s_titles_mutex);
-        if (!s_titles.empty())
-            s_titles.pop_back();
+        std::lock_guard<std::mutex> lock(s_open_mutex);
+        const auto it = std::find_if(s_open.rbegin(), s_open.rend(), [dialog](const auto &entry) { return entry.first == dialog; });
+        if (it != s_open.rend())
+            s_open.erase(std::next(it).base());
+        s_open_count = static_cast<int>(s_open.size());
     }
 };
 
@@ -57,14 +62,18 @@ void remove_modal_guard()
         return;
     s_hook->Unregister();
     s_hook.reset();
+    // Closes it will not see must not leave stale entries for the next install.
+    std::lock_guard<std::mutex> lock(s_open_mutex);
+    s_open.clear();
+    s_open_count = 0;
 }
 
 int open_dialog_count() { return s_open_count.load(); }
 
 std::string open_dialog_title()
 {
-    std::lock_guard<std::mutex> lock(s_titles_mutex);
-    return s_titles.empty() ? std::string() : s_titles.back();
+    std::lock_guard<std::mutex> lock(s_open_mutex);
+    return s_open.empty() ? std::string() : s_open.back().second;
 }
 
 bool modal_dialog_open()

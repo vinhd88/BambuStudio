@@ -30,6 +30,8 @@ const char *const              DISCOVERY_FILE_NAME = "agent-bridge.json";
 const char *const              ENABLED_KEY         = "agent_bridge_enabled";
 
 std::unique_ptr<AgentBridgeServer> s_server;
+// Why the switch is on but nothing listens, for the Preferences tab. Empty when running or off.
+std::string                        s_start_problem;
 
 // The custom build must not write to the official app's data folder, even a small token file.
 bool uses_default_data_dir()
@@ -66,6 +68,16 @@ std::function<void(BridgeResponse)> name_open_dialog(std::function<void(BridgeRe
 }
 } // namespace
 
+BridgeStatus bridge_status()
+{
+    BridgeStatus status;
+    status.enabled = bridge_enabled();
+    status.running = s_server != nullptr;
+    status.port    = s_server ? s_server->port() : 0;
+    status.problem = s_start_problem;
+    return status;
+}
+
 bool bridge_enabled() { return wxGetApp().app_config->get(ENABLED_KEY) != "false"; }
 
 void set_bridge_enabled(bool enabled)
@@ -94,6 +106,7 @@ void start_bridge()
 {
     if (s_server)
         return;
+    s_start_problem.clear();
     if (!bridge_enabled()) {
         // Off means no discovery file either, even one a crash left behind.
         if (!uses_default_data_dir())
@@ -103,6 +116,7 @@ void start_bridge()
     }
     try {
         if (uses_default_data_dir()) {
+            s_start_problem = "Studio is using the official app's data folder, which agents must not touch. Start it with --datadir.";
             BOOST_LOG_TRIVIAL(warning) << "agent bridge: not started, Studio is using the default data folder. Pass --datadir to enable it.";
             return;
         }
@@ -122,12 +136,14 @@ void start_bridge()
         BOOST_LOG_TRIVIAL(info) << "agent bridge: listening on 127.0.0.1:" << s_server->port();
     } catch (const std::exception &e) {
         s_server.reset();
+        s_start_problem = std::string("Could not start: ") + e.what();
         BOOST_LOG_TRIVIAL(error) << "agent bridge: failed to start: " << e.what();
     }
 }
 
 void stop_bridge()
 {
+    s_start_problem.clear();
     if (!s_server)
         return;
     remove_slice_tracking();

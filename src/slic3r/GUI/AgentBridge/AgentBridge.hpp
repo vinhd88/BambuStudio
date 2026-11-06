@@ -1,8 +1,22 @@
 #ifndef slic3r_AgentBridge_hpp_
 #define slic3r_AgentBridge_hpp_
 
-// Entry points for the agent bridge, called from the GUI app lifecycle.
+#include <cstdint>
+#include <string>
+
+// Entry points for the agent bridge, called from the GUI app lifecycle and the Preferences tab.
 namespace Slic3r { namespace GUI { namespace AgentBridge {
+
+struct BridgeStatus
+{
+    bool        enabled = false; // the switch
+    bool        running = false; // listening now
+    uint16_t    port    = 0;
+    std::string problem;         // why it is on but not running; empty otherwise
+};
+
+// UI thread.
+BridgeStatus bridge_status();
 
 // Starts serving if the switch is on and Studio runs with a separate data dir. Never throws: a bridge failure must not
 // stop Studio from starting.

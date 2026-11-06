@@ -1,4 +1,5 @@
 #include "Preferences.hpp"
+#include "AgentBridge/AgentBridgePreferencesTab.hpp"
 #include "OptionsGroup.hpp"
 #include "GUI_App.hpp"
 #include "MainFrame.hpp"
@@ -1315,6 +1316,8 @@ void PreferencesDialog::create()
     add_tab(_CTX(L_CONTEXT("User", "Preference"), "Preference"), create_user_tab());
     add_tab(_CTX(L_CONTEXT("3D", "Preference"), "Preference"), create_3d_tab());
     add_tab(_CTX(L_CONTEXT("Other", "Preference"), "Preference"), create_other_tab());
+    // Agent build: agent access switch and token reset.
+    add_tab(_L("AI Agents"), AgentBridge::create_preferences_tab(m_book));
 
 #if !BBL_RELEASE_TO_PUBLIC
     add_tab(_L("Developer Tools"), create_developer_tab());
