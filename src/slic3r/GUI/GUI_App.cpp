@@ -1420,6 +1420,11 @@ void GUI_App::post_init()
         CallAfter([this] {
             bool cw_showed = this->config_wizard_startup();
 
+            // Agent build: no online preset sync and no new-version check at startup. Both pop up
+            // dialogs ("Configuration update", new version) that block agent changes until answered,
+            // and newer system presets would no longer match the official app this build hands off to.
+            // Help > Check for updates still works by hand.
+#if 0
             std::string http_url = get_http_url(app_config->get_country_code());
             std::string language = GUI::into_u8(current_language_code());
             std::string network_ver = Slic3r::NetworkAgent::get_version();
@@ -1428,6 +1433,7 @@ void GUI_App::post_init()
 
             //BBS: check new version
             this->check_new_version();
+#endif
 
             //BBS: pull the studio version policy, the startup check point waits for it
             VersionPolicyManager::inst().init([this] {
