@@ -11,13 +11,26 @@
 // connect call runs the app's own CLI and can take a few seconds.
 namespace Slic3r { namespace GUI { namespace AgentBridge {
 
+// How an app's config file is written.
+enum class ConfigFormat
+{
+    Json,       // mcpServers object (Claude Desktop, Claude Code, Antigravity)
+    Toml,       // [mcp_servers.<name>] tables (Codex)
+    CordisYaml, // DeepSeek Harness patch rows, see AgentBridgeAiAppConfigsCordisYaml.hpp
+};
+
 struct AiApp
 {
-    std::string id;     // claude_desktop, claude_code, codex, antigravity
-    std::string name;   // shown to the user
-    std::string config; // the file holding its MCP servers
-    std::string cli;    // command-line tool that edits it ("claude", "codex", "agy"); empty: Studio edits the JSON file
+    std::string              id;      // claude_desktop, claude_code, codex, antigravity, deepseek_harness
+    std::string              name;    // shown to the user
+    std::string              config;  // the file holding its MCP servers
+    std::string              cli;     // command-line tool that edits it ("claude", "codex", "agy"); empty: Studio edits the file
+    ConfigFormat             format = ConfigFormat::Json;
+    std::vector<std::string> bundles; // without a CLI: app bundles that show it is installed ("~/" = home)
 };
+
+// The bambu-studio entry in `text`, an app's config in `format`. Throws if the text cannot be parsed.
+std::optional<McpEntry> read_app_entry(ConfigFormat format, const std::string &text);
 
 // The supported apps, with config paths under `home`.
 std::vector<AiApp> ai_apps(const std::string &home);

@@ -8,6 +8,7 @@
 #include <boost/nowide/fstream.hpp>
 #include <unistd.h>
 
+#include "AgentBridgeAiAppConfigsCordisYaml.hpp"
 #include "AgentBridgeProcessRunner.hpp"
 
 namespace fs = boost::filesystem;
@@ -15,8 +16,6 @@ namespace fs = boost::filesystem;
 namespace Slic3r { namespace GUI { namespace AgentBridge {
 
 namespace {
-const char *const CLAUDE_DESKTOP_APPS[] = {"/Applications/Claude.app", "~/Applications/Claude.app"};
-
 std::string expand(const std::string &path, const std::string &home) { return path.rfind("~/", 0) == 0 ? home + path.substr(1) : path; }
 
 bool executable(const std::string &path) { return !path.empty() && path.front() == '/' && ::access(path.c_str(), X_OK) == 0 && fs::is_regular_file(path); }
@@ -43,9 +42,9 @@ void write_file_atomically(const std::string &config, const std::string &text)
             if (!out.flush())
                 throw std::runtime_error("cannot write " + path);
         }
+        // A new config is private: Harness writes its own as 0600, and MCP entries may carry env values.
         const auto perms = fs::status(path, ec).permissions();
-        if (!ec)
-            fs::permissions(temp, perms);
+        fs::permissions(temp, ec ? fs::owner_read | fs::owner_write : perms);
         fs::rename(temp, path);
     } catch (...) {
         fs::remove(temp, ec);
@@ -92,10 +91,24 @@ std::string last_lines(const std::string &output)
 
 std::vector<AiApp> ai_apps(const std::string &home)
 {
-    return {{"claude_desktop", "Claude Desktop", home + "/Library/Application Support/Claude/claude_desktop_config.json", ""},
+    return {{"claude_desktop", "Claude Desktop", home + "/Library/Application Support/Claude/claude_desktop_config.json", "", ConfigFormat::Json,
+             {"/Applications/Claude.app", "~/Applications/Claude.app"}},
             {"claude_code", "Claude Code", home + "/.claude.json", "claude"},
-            {"codex", "Codex", home + "/.codex/config.toml", "codex"},
-            {"antigravity", "Gemini (Antigravity)", home + "/.gemini/config/mcp_config.json", "agy"}};
+            {"codex", "Codex", home + "/.codex/config.toml", "codex", ConfigFormat::Toml},
+            {"antigravity", "Gemini (Antigravity)", home + "/.gemini/config/mcp_config.json", "agy"},
+            // The desktop profile's patch layer; Harness hot-reloads it, so no restart and no CLI.
+            {"deepseek_harness", "DeepSeek Harness", home + "/.dsh/profiles/desktop/cordis.patch.yml", "", ConfigFormat::CordisYaml,
+             {"/Applications/DeepSeek Harness.app", "~/Applications/DeepSeek Harness.app"}}};
+}
+
+std::optional<McpEntry> read_app_entry(ConfigFormat format, const std::string &text)
+{
+    switch (format) {
+    case ConfigFormat::Toml: return read_toml_entry(text);
+    case ConfigFormat::CordisYaml: return read_cordis_yaml_entry(text);
+    case ConfigFormat::Json: break;
+    }
+    return read_json_entry(text);
 }
 
 std::string find_cli(const std::string &name, const std::string &home)
@@ -133,7 +146,7 @@ std::vector<AiApp> apps_pointing_elsewhere(const McpEntry &expected, const std::
             if (!fs::exists(app.config))
                 continue;
             const std::string text  = read_file(app.config);
-            const auto        found = app.id == "codex" ? read_toml_entry(text) : read_json_entry(text);
+            const auto        found = read_app_entry(app.format, text);
             if (compare_entry(found, expected) == ConnectionState::Different)
                 elsewhere.push_back(app);
         } catch (const std::exception &) {
@@ -150,7 +163,7 @@ AppStatus app_status(const AiApp &app, const McpEntry &expected, const std::stri
     try {
         if (app.cli.empty()) {
             bool installed = fs::exists(fs::path(app.config).parent_path());
-            for (const char *bundle : CLAUDE_DESKTOP_APPS)
+            for (const std::string &bundle : app.bundles)
                 installed = installed || fs::exists(expand(bundle, home));
             if (!installed)
                 return status;
@@ -160,7 +173,7 @@ AppStatus app_status(const AiApp &app, const McpEntry &expected, const std::stri
         std::optional<McpEntry> found;
         if (fs::exists(app.config)) {
             const std::string text = read_file(app.config);
-            found = app.id == "codex" ? read_toml_entry(text) : read_json_entry(text);
+            found = read_app_entry(app.format, text);
         }
         status.state = compare_entry(found, expected);
         if (found)
@@ -176,12 +189,14 @@ ConnectResult connect_app(const AiApp &app, const McpEntry &entry, const std::st
     ConnectResult result;
     try {
         if (app.cli.empty()) {
-            if (claude_desktop_running()) {
+            // Claude Desktop rewrites its file on quit; Harness re-reads its file before every write.
+            if (app.id == "claude_desktop" && claude_desktop_running()) {
                 result.message = "Claude Desktop is running and may overwrite the change. Quit Claude, then connect again.";
                 return result;
             }
             const std::string text    = fs::exists(app.config) ? read_file(app.config) : "";
-            const std::string updated = with_json_entry(text, entry); // throws on a config it cannot read: nothing written
+            // Throws on a config it cannot read: nothing written.
+            const std::string updated = app.format == ConfigFormat::CordisYaml ? with_cordis_yaml_entry(text, entry) : with_json_entry(text, entry);
             result.backup             = back_up(app.config);
             fs::create_directories(fs::path(app.config).parent_path());
             write_file_atomically(app.config, updated);
@@ -194,7 +209,7 @@ ConnectResult connect_app(const AiApp &app, const McpEntry &entry, const std::st
             }
             // Read before changing anything: a config the app cannot have written is left alone.
             const std::string text     = fs::exists(app.config) ? read_file(app.config) : "";
-            const auto        previous = app.id == "codex" ? read_toml_entry(text) : read_json_entry(text);
+            const auto        previous = read_app_entry(app.format, text);
             result.backup              = back_up(app.config);
             // Claude Code refuses to add over an existing entry; codex and agy update it in place.
             const bool replace = app.id == "claude_code" && previous;

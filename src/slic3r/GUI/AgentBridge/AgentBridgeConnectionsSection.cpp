@@ -23,6 +23,7 @@
 
 #include "AgentBridge.hpp"
 #include "AgentBridgeAgentDataFolder.hpp"
+#include "AgentBridgeAiAppConfigsCordisYaml.hpp"
 #include "AgentBridgeAiAppConnect.hpp"
 
 namespace Slic3r { namespace GUI { namespace AgentBridge {
@@ -61,11 +62,11 @@ std::string shell_quoted(const std::string &arg)
     return quoted + "'";
 }
 
-// What to set up by hand when connecting fails: the JSON snippet, or the CLI command.
+// What to set up by hand when connecting fails: the config snippet, or the CLI command.
 std::string manual_setup(const AiApp &app, const McpEntry &entry)
 {
     if (app.cli.empty())
-        return json_snippet(entry);
+        return app.format == ConfigFormat::CordisYaml ? cordis_yaml_snippet(entry) : json_snippet(entry);
     // Claude Code refuses to add over an existing entry: remove it first (harmless if there is none).
     std::string command = app.id == "claude_code" ? std::string("claude mcp remove -s user ") + MCP_ENTRY_NAME + "; claude mcp add -s user " : app.cli + " mcp add ";
     command += std::string(MCP_ENTRY_NAME) + " -- " + shell_quoted(entry.command);
@@ -111,7 +112,10 @@ bool connect_and_report(wxWindow *parent, const AiApp &app, const McpEntry &entr
     log_connect(app, trigger, result);
     const wxString name = wxString::FromUTF8(app.name);
     if (result.ok) {
-        wxString text = wxString::Format(_L("%s is connected to this Studio. Restart %s to use it."), name, name);
+        // Harness reloads its patch file by itself; the others read their config at start.
+        wxString text = app.format == ConfigFormat::CordisYaml
+                            ? wxString::Format(_L("%s is connected to this Studio. It picks up the change in a few seconds."), name)
+                            : wxString::Format(_L("%s is connected to this Studio. Restart %s to use it."), name, name);
         if (!result.backup.empty())
             text += "\n\n" + _L("Its previous settings were saved to:") + "\n" + wxString::FromUTF8(result.backup);
         MessageDialog(parent, text, _L("Connect AI apps"), wxOK | wxICON_INFORMATION).ShowModal();
@@ -122,8 +126,10 @@ bool connect_and_report(wxWindow *parent, const AiApp &app, const McpEntry &entr
         wxTheClipboard->SetData(new wxTextDataObject(wxString::FromUTF8(manual)));
         wxTheClipboard->Close();
     }
-    const wxString how = app.cli.empty() ? wxString::Format(_L("Paste it into %s under mcpServers."), wxString::FromUTF8(app.config))
-                                         : _L("Run it in Terminal.");
+    const wxString file = wxString::FromUTF8(app.config);
+    const wxString how  = !app.cli.empty()                           ? _L("Run it in Terminal.")
+                          : app.format == ConfigFormat::CordisYaml ? wxString::Format(_L("Add it at the end of %s; DeepSeek Harness reloads it in a few seconds."), file)
+                                                                   : wxString::Format(_L("Paste it into %s under mcpServers."), file);
     wxString state = result.changed ? _L("Its settings were changed; the previous ones are in:") + "\n" + wxString::FromUTF8(result.backup)
                                     : _L("Nothing was changed.");
     MessageDialog(parent,

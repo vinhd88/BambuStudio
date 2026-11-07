@@ -1,0 +1,42 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: deepseek-account
+    model: deepseek-flash
+    reasoningEffort: low
+- id: ui-settings-account
+  name: "@deepseek-ai/dsh-client-ui-settings-account"
+  config:
+    version: 1
+    step: done
+    purpose: development
+    process: detailed
+    completion: completed
+    usage: detailed
+    developerTools: true
+- id: ui-chat
+  name: "@deepseek-ai/dsh-client-ui-chat"
+  config:
+    transcriptView: detailed
+    performanceUsage: detailed
+- id: ui-settings
+  name: "@deepseek-ai/dsh-client-ui-settings"
+  config:
+    enabled: true
+
+# bambu-studio: written by Bambu Studio (Preferences > AI Agents > Connect). Connect replaces this entry.
+- insert:
+    - id: mcp-bambu-studio
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: bambu-studio
+        transport: stdio
+        command: '/Users/o''neil/Apps/BambuStudio.app/Contents/MacOS/BambuStudio'
+        args:
+          - --mcp-stdio
+          - --datadir
+          - '/Users/o''neil/Library/Application Support/BambuStudioAgent with a
+            long folder name here'

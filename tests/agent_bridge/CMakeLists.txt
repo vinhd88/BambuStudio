@@ -14,9 +14,12 @@ add_executable(${_TEST_NAME}_tests
     agent_bridge_mcp_tests.cpp
     agent_bridge_official_data_import_tests.cpp
     agent_bridge_ai_app_connect_tests.cpp
+    agent_bridge_cordis_yaml_entry_tests.cpp
 )
 
 target_link_libraries(${_TEST_NAME}_tests test_gui)
+# Golden files made with the AI apps' own tools (see live-checks/harness-yaml-roundtrip.mjs).
+target_compile_definitions(${_TEST_NAME}_tests PRIVATE AGENT_BRIDGE_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 set_property(TARGET ${_TEST_NAME}_tests PROPERTY FOLDER "tests")
 
 add_test(${_TEST_NAME}_tests ${_TEST_NAME}_tests "${CATCH_EXTRA_ARGS} exclude:[NotWorking]")

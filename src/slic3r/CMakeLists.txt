@@ -477,6 +477,10 @@ set(SLIC3R_GUI_SOURCES
     GUI/AgentBridge/AgentBridgeAgentDataFolder.cpp
     GUI/AgentBridge/AgentBridgeAiAppConfigs.cpp
     GUI/AgentBridge/AgentBridgeAiAppConfigs.hpp
+    GUI/AgentBridge/AgentBridgeAiAppConfigsCordisYaml.cpp
+    GUI/AgentBridge/AgentBridgeAiAppConfigsCordisYaml.hpp
+    GUI/AgentBridge/AgentBridgeYamlScalarCodec.cpp
+    GUI/AgentBridge/AgentBridgeYamlScalarCodec.hpp
     GUI/AgentBridge/AgentBridgeAiAppConnect.cpp
     GUI/AgentBridge/AgentBridgeAiAppConnect.hpp
     GUI/AgentBridge/AgentBridgeConnectionsSection.cpp
