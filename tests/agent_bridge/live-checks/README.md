@@ -9,7 +9,7 @@ The C++ unit tests (`tests/agent_bridge/*.cpp`, target `agent_bridge_tests`) cov
 Node 20+, then `npm install` in this folder once. Start the dev build on its own data folder and a **scratch copy** of a project:
 
 ```sh
-build/arm64/BambuStudio/BambuStudio.app/Contents/MacOS/BambuStudio --datadir <DATA_DIR> <scratch>.3mf
+"build/arm64/BambuStudio/Bambu Agent Studio.app/Contents/MacOS/BambuStudio" --datadir <DATA_DIR> <scratch>.3mf
 ```
 
 `<DATA_DIR>` below is that same folder. Scripts that launch the MCP helper use `build/arm64/src/BambuStudio.app/Contents/MacOS/BambuStudio` unless `BAMBU_STUDIO_BINARY` (or a path argument) says otherwise.

@@ -305,8 +305,12 @@ else ()
     endif ()
     if (CMAKE_MACOSX_BUNDLE)
         set(BIN_RESOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/${BIN_CONF_DIR}/BambuStudio.app/Contents/Resources")
-        set(MACOSX_BUNDLE_ICON_FILE Icon.icns)
-        set(MACOSX_BUNDLE_BUNDLE_NAME "Bambu Studio")
+        # agent-bridge: this build is "Bambu Agent Studio" with its own bundle id and a violet
+        # icon (tools/agent-studio-branding/make-agent-studio-icons.sh) so macOS never mixes it
+        # up with the official Bambu Studio app. See cmake/modules/MacOSXBundleInfo.plist.in.
+        set(MACOSX_BUNDLE_GUI_IDENTIFIER local.bambustudio.agent)
+        set(MACOSX_BUNDLE_ICON_FILE BambuAgentStudio.icns)
+        set(MACOSX_BUNDLE_BUNDLE_NAME "Bambu Agent Studio")
         set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${SLIC3R_VERSION})
         set(MACOSX_BUNDLE_COPYRIGHT "Copyright(C) 2021-2025 Lunkuo All Rights Reserved")
     endif()

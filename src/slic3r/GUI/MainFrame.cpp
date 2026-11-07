@@ -316,7 +316,8 @@ DPIFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, BORDERLESS_FRAME_
     default:
     case GUI_App::EAppMode::Editor:
         m_taskbar_icon = std::make_unique<BambuStudioTaskBarIcon>(wxTBI_DOCK);
-        m_taskbar_icon->SetIcon(wxIcon(Slic3r::var("BambuStudio-mac_256px.ico"), wxBITMAP_TYPE_ICO), "BambuStudio");
+        // agent-bridge: violet Dock icon so this build is never mistaken for official Bambu Studio.
+        m_taskbar_icon->SetIcon(wxIcon(Slic3r::var("BambuAgentStudio-mac_256px.ico"), wxBITMAP_TYPE_ICO), "Bambu Agent Studio");
         break;
     case GUI_App::EAppMode::GCodeViewer:
         break;

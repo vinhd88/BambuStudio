@@ -90,6 +90,9 @@ echo " - CMAKE_BUILD_PARALLEL_LEVEL: $CMAKE_BUILD_PARALLEL_LEVEL"
 echo
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# agent-bridge: installed app folder name, distinct from the official BambuStudio.app in
+# Spotlight and Finder. The raw CMake output keeps the name BambuStudio.app.
+AGENT_APP="Bambu Agent Studio.app"
 PROJECT_BUILD_DIR="$PROJECT_DIR/build/$ARCH"
 DEPS_DIR="$PROJECT_DIR/deps"
 DEPS_BUILD_DIR="$DEPS_DIR/build/$ARCH"
@@ -178,29 +181,19 @@ function build_slicer() {
             cd "$PROJECT_BUILD_DIR"
             mkdir -p BambuStudio
             cd BambuStudio
-            # remove previously built app
-            rm -rf ./BambuStudio.app
-            # fully copy newly built app
-            cp -pR "../src$BUILD_DIR_CONFIG_SUBDIR/BambuStudio.app" ./BambuStudio.app
+            # remove previously built app (and the copy named before the agent rename)
+            rm -rf "./$AGENT_APP" ./BambuStudio.app ./BambuStudio.app.dSYM
+            # fully copy newly built app (its bundle identity is set by CMake after each build)
+            cp -pR "../src$BUILD_DIR_CONFIG_SUBDIR/BambuStudio.app" "./$AGENT_APP"
             # copy standalone dSYM symbol bundle if present (Release only)
-            rm -rf ./BambuStudio.app.dSYM
-            cp -pR "../src$BUILD_DIR_CONFIG_SUBDIR/BambuStudio.app.dSYM" ./BambuStudio.app.dSYM 2>/dev/null || true
+            rm -rf "./$AGENT_APP.dSYM"
+            cp -pR "../src$BUILD_DIR_CONFIG_SUBDIR/BambuStudio.app.dSYM" "./$AGENT_APP.dSYM" 2>/dev/null || true
             # fix resources
-            resources_path=$(readlink ./BambuStudio.app/Contents/Resources)
-            rm ./BambuStudio.app/Contents/Resources
-            cp -R "$resources_path" ./BambuStudio.app/Contents/Resources
+            resources_path=$(readlink "./$AGENT_APP/Contents/Resources")
+            rm "./$AGENT_APP/Contents/Resources"
+            cp -R "$resources_path" "./$AGENT_APP/Contents/Resources"
             # delete .DS_Store file
-            find ./BambuStudio.app/ -name '.DS_Store' -delete
-            # agent-bridge: keep this build distinct from the official app in macOS.
-            # Drop URL scheme and file type claims so the official app keeps them.
-            plist=./BambuStudio.app/Contents/Info.plist
-            /usr/libexec/PlistBuddy \
-                -c "Set :CFBundleIdentifier local.bambustudio.agent" \
-                -c "Set :CFBundleName BambuStudio Agent" \
-                -c "Delete :CFBundleURLTypes" \
-                -c "Delete :CFBundleDocumentTypes" \
-                -c "Delete :UTImportedTypeDeclarations" \
-                "$plist"
+            find "./$AGENT_APP/" -name '.DS_Store' -delete
         )
 
     fi
@@ -216,25 +209,25 @@ function build_universal() {
     echo "Creating universal binary..."
     # PROJECT_BUILD_DIR="$PROJECT_DIR/build_Universal"
     mkdir -p "$PROJECT_BUILD_DIR/BambuStudio"
-    UNIVERSAL_APP="$PROJECT_BUILD_DIR/BambuStudio/BambuStudio.app"
+    UNIVERSAL_APP="$PROJECT_BUILD_DIR/BambuStudio/$AGENT_APP"
     rm -rf "$UNIVERSAL_APP"
-    cp -R "$PROJECT_DIR/build/arm64/BambuStudio/BambuStudio.app" "$UNIVERSAL_APP"
+    cp -R "$PROJECT_DIR/build/arm64/BambuStudio/$AGENT_APP" "$UNIVERSAL_APP"
     
     # Get the binary path inside the .app bundle
     BINARY_PATH="Contents/MacOS/BambuStudio"
     
     # Create universal binary using lipo
     lipo -create \
-        "$PROJECT_DIR/build/x86_64/BambuStudio/BambuStudio.app/$BINARY_PATH" \
-        "$PROJECT_DIR/build/arm64/BambuStudio/BambuStudio.app/$BINARY_PATH" \
+        "$PROJECT_DIR/build/x86_64/BambuStudio/$AGENT_APP/$BINARY_PATH" \
+        "$PROJECT_DIR/build/arm64/BambuStudio/$AGENT_APP/$BINARY_PATH" \
         -output "$UNIVERSAL_APP/$BINARY_PATH"
 
     echo "Universal binary created at $UNIVERSAL_APP"
 
     # Create universal dSYM by merging the per-arch DWARF (Release only)
-    UNIVERSAL_DSYM="$PROJECT_BUILD_DIR/BambuStudio/BambuStudio.app.dSYM"
-    ARM64_DSYM="$PROJECT_DIR/build/arm64/BambuStudio/BambuStudio.app.dSYM"
-    X86_64_DSYM="$PROJECT_DIR/build/x86_64/BambuStudio/BambuStudio.app.dSYM"
+    UNIVERSAL_DSYM="$PROJECT_BUILD_DIR/BambuStudio/$AGENT_APP.dSYM"
+    ARM64_DSYM="$PROJECT_DIR/build/arm64/BambuStudio/$AGENT_APP.dSYM"
+    X86_64_DSYM="$PROJECT_DIR/build/x86_64/BambuStudio/$AGENT_APP.dSYM"
     DWARF_PATH="Contents/Resources/DWARF/BambuStudio"
     if [ -d "$ARM64_DSYM" ] && [ -d "$X86_64_DSYM" ]; then
         echo "Creating universal dSYM..."
