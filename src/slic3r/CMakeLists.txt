@@ -474,6 +474,10 @@ set(SLIC3R_GUI_SOURCES
     GUI/AgentBridge/AgentBridge.cpp
     GUI/AgentBridge/AgentBridge.hpp
     GUI/AgentBridge/AgentBridgePreferencesTab.cpp
+    GUI/AgentBridge/AgentBridgeAgentDataFolder.cpp
+    GUI/AgentBridge/AgentBridgeAgentDataFolder.hpp
+    GUI/AgentBridge/AgentBridgeOfficialDataImport.cpp
+    GUI/AgentBridge/AgentBridgeOfficialDataImport.hpp
     GUI/AgentBridge/AgentBridgePreferencesTab.hpp
     GUI/AgentBridge/AgentBridgeMcpProtocol.cpp
     GUI/AgentBridge/AgentBridgeMcpProtocol.hpp

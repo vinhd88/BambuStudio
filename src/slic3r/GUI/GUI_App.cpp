@@ -1,6 +1,7 @@
 #include "libslic3r/Technologies.hpp"
 #include "GUI_App.hpp"
 #include "AgentBridge/AgentBridge.hpp"
+#include "AgentBridge/AgentBridgeAgentDataFolder.hpp"
 #include "BindDialog.hpp"
 #include "GUI_Init.hpp"
 #include "GUI_ObjectList.hpp"
@@ -1195,6 +1196,7 @@ void GUI_App::post_init()
     }
 
     AgentBridge::start_bridge();
+    AgentBridge::show_startup_import_notice();
 
 
 
@@ -2671,6 +2673,8 @@ void GUI_App::init_app_config()
 #if BBL_INTERNAL_TESTING
             data_dir += BBL_INTERNAL_TESTING == 1 ? "Internal" : "Beta";
 #endif
+            // Agent build: its own folder beside the official app's, never the official one.
+            data_dir = AgentBridge::agent_data_dir_for(data_dir);
             //BBS create folder if not exists
             boost::filesystem::path data_dir_path(data_dir);
             boost::filesystem::path log_dir_path = data_dir_path / "log";
@@ -2692,6 +2696,8 @@ void GUI_App::init_app_config()
     } else {
         m_datadir_redefined = true;
     }
+    // Agent build: copy printers and presets from the official app on first run, or when asked to.
+    AgentBridge::prepare_agent_data_folder(wxStandardPaths::Get().GetUserDataDir().ToUTF8().data(), data_dir(), !m_datadir_redefined);
 
     // start log here
     const auto& enc_opts = s_get_log_enc_opts();

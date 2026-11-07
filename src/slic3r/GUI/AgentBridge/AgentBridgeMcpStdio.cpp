@@ -4,6 +4,7 @@
 #include <cstring>
 #include <iostream>
 
+#include "AgentBridgeAgentDataFolder.hpp"
 #include "AgentBridgeMcpProtocol.hpp"
 #include "AgentBridgeStudioClient.hpp"
 
@@ -27,7 +28,11 @@ std::string mcp_stdio_data_dir(int argc, char **argv)
         if (std::strcmp(argv[i], "--datadir") == 0)
             return argv[i + 1];
     const char *env = std::getenv(DATA_DIR_ENV);
-    return env != nullptr ? env : "";
+    if (env != nullptr && *env != '\0')
+        return env;
+    // The folder Studio uses when started without --datadir.
+    const std::string official = official_data_dir_from_home();
+    return official.empty() ? "" : agent_data_dir_for(official);
 }
 
 int run_mcp_stdio(const std::string &data_dir, std::istream &in, std::ostream &out)
@@ -49,7 +54,7 @@ int run_mcp_stdio(int argc, char **argv)
 {
     const std::string data_dir = mcp_stdio_data_dir(argc, argv);
     if (data_dir.empty())
-        std::cerr << "bambu-studio --mcp-stdio: no --datadir or " << DATA_DIR_ENV << "; tool calls will report not_configured" << std::endl;
+        std::cerr << "bambu-studio --mcp-stdio: no --datadir, " << DATA_DIR_ENV << " or HOME; tool calls will report not_configured" << std::endl;
     return run_mcp_stdio(data_dir, std::cin, std::cout);
 }
 

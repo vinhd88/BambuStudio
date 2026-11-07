@@ -13,7 +13,8 @@ constexpr const char *MCP_STDIO_FLAG = "--mcp-stdio";
 // True if `--mcp-stdio` is among the arguments.
 bool is_mcp_stdio_run(int argc, char **argv);
 
-// The data folder from `--datadir <dir>`, else env BAMBU_AGENT_DATA_DIR, else empty.
+// The data folder from `--datadir <dir>`, else env BAMBU_AGENT_DATA_DIR, else the agent build's
+// default folder (~/Library/Application Support/BambuStudioAgent); empty only without HOME.
 std::string mcp_stdio_data_dir(int argc, char **argv);
 
 // Serves until `in` ends. Only JSON-RPC goes to `out`. Returns the process exit code.

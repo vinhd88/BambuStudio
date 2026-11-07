@@ -4,12 +4,18 @@
 #include <memory>
 
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
 #include <boost/log/trivial.hpp>
 #include <wx/stdpaths.h>
 
 #include "libslic3r/AppConfig.hpp"
 #include "libslic3r/Utils.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
+#include "slic3r/GUI/I18N.hpp"
+#include "slic3r/GUI/MainFrame.hpp"
+#include "slic3r/GUI/MsgDialog.hpp"
+
+#include "AgentBridgeAgentDataFolder.hpp"
 
 #include "AgentBridgeDiscoveryFile.hpp"
 #include "AgentBridgeModalGuard.hpp"
@@ -154,6 +160,56 @@ void stop_bridge()
         BOOST_LOG_TRIVIAL(error) << "agent bridge: failed to stop cleanly: " << e.what();
     }
     s_server.reset();
+}
+
+namespace {
+std::string import_notice_text(const ImportSummary &summary)
+{
+    if (!summary.source_found)
+        return _u8L("No official Bambu Studio data was found, so this build starts without your printers and presets.");
+    std::string text;
+    try {
+        text = summary.user_presets > 0 || summary.config_copied
+                           ? (boost::format(_u8L("Copied from the official Bambu Studio: %1% user presets, printer profiles and preset selections. "
+                                                 "Account, login, access codes and printer addresses were not copied."))
+                              % summary.user_presets).str()
+                           : _u8L("Nothing to copy was found in the official Bambu Studio data folder.");
+    } catch (const std::exception &) {
+        // A translation that breaks the placeholder must not stop Studio from starting.
+        text = "Copied " + std::to_string(summary.user_presets) + " user presets from the official Bambu Studio.";
+    }
+    if (!summary.backup.empty())
+        text += " " + _u8L("Your previous presets were saved to:") + " " + summary.backup;
+    if (!summary.problems.empty())
+        text += " " + _u8L("Not copied:") + " " + summary.problems.front() + (summary.problems.size() > 1 ? " (+" + std::to_string(summary.problems.size() - 1) + ")" : "");
+    return text;
+}
+} // namespace
+
+void show_startup_import_notice()
+{
+    const auto summary = take_startup_import_summary();
+    if (!summary)
+        return;
+    for (const std::string &problem : summary->problems)
+        BOOST_LOG_TRIVIAL(warning) << "agent data import: " << problem;
+    BOOST_LOG_TRIVIAL(info) << "agent data import: source found " << summary->source_found << ", " << summary->user_presets << " preset files, config "
+                            << summary->config_copied;
+    const std::string text  = import_notice_text(*summary);
+    const bool        clean = summary->problems.empty();
+    // A dialog, not a 3D-view notification: with no project open Studio starts on the Home page,
+    // where notifications are not drawn, and they fade before the user switches. Shown once.
+    wxGetApp().CallAfter([text, clean] {
+        MessageDialog(wxGetApp().mainframe, wxString::FromUTF8(text), _L("Agent build data folder"), wxOK | (clean ? wxICON_INFORMATION : wxICON_WARNING))
+            .ShowModal();
+    });
+}
+
+void request_reimport()
+{
+    if (uses_default_data_dir())
+        throw std::runtime_error(_u8L("Studio is using the official app's data folder, so there is nothing to import into."));
+    schedule_reimport(data_dir());
 }
 
 }}} // namespace Slic3r::GUI::AgentBridge

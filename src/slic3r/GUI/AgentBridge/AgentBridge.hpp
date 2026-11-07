@@ -33,6 +33,13 @@ void set_bridge_enabled(bool enabled);
 // Restarts a running bridge with a new token (and port), so the old token stops working.
 void reset_bridge_token();
 
+// After startup: a dialog, once the main window is up, telling the user what the first-run import or a
+// requested re-import copied from the official Studio, if one ran.
+void show_startup_import_notice();
+// Marks a re-import from the official Studio for the next start, which first backs up this build's
+// presets. Throws with a message for the user if that is not possible.
+void request_reimport();
+
 }}} // namespace Slic3r::GUI::AgentBridge
 
 #endif

@@ -3,6 +3,7 @@
 #include <catch2/catch.hpp>
 
 #include <chrono>
+#include <cstdlib>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -249,4 +250,18 @@ TEST_CASE("--mcp-stdio arguments", "[agent_bridge]")
 
     const char *gui[] = {"BambuStudio", "project.3mf"};
     CHECK_FALSE(is_mcp_stdio_run(2, const_cast<char **>(gui)));
+
+    // No flag and no env: the folder Studio itself uses without --datadir.
+    const char *saved = std::getenv("BAMBU_AGENT_DATA_DIR");
+    const std::string saved_value = saved ? saved : "";
+    ::unsetenv("BAMBU_AGENT_DATA_DIR");
+    const char *bare[] = {"BambuStudio", "--mcp-stdio"};
+    const std::string fallback = mcp_stdio_data_dir(2, const_cast<char **>(bare));
+    CHECK(fallback == std::string(std::getenv("HOME")) + "/Library/Application Support/BambuStudioAgent");
+    ::setenv("BAMBU_AGENT_DATA_DIR", "/tmp/from-env", 1);
+    CHECK(mcp_stdio_data_dir(2, const_cast<char **>(bare)) == "/tmp/from-env");
+    if (saved)
+        ::setenv("BAMBU_AGENT_DATA_DIR", saved_value.c_str(), 1);
+    else
+        ::unsetenv("BAMBU_AGENT_DATA_DIR");
 }

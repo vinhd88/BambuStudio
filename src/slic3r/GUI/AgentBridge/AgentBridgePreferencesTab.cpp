@@ -4,6 +4,7 @@
 #include <wx/sizer.h>
 
 #include "slic3r/GUI/I18N.hpp"
+#include "slic3r/GUI/MsgDialog.hpp"
 #include "slic3r/GUI/Widgets/Button.hpp"
 #include "slic3r/GUI/Widgets/CheckBox.hpp"
 #include "slic3r/GUI/Widgets/Label.hpp"
@@ -100,6 +101,16 @@ wxWindow *create_preferences_tab(wxWindow *parent)
                     ::Label::Body_12, ThemeColor::TextSecondary),
                row_flags);
 
+    sizer->AddSpacer(page->FromDIP(20));
+    auto *reimport = plain_button(page, _L("Re-import from official Studio"));
+    sizer->Add(reimport, row_flags);
+    sizer->AddSpacer(page->FromDIP(6));
+    sizer->Add(text(page, _L("Copies your printers, filaments and process presets from the official Bambu Studio again, the next time this build starts. "
+                             "This build's presets are backed up first."),
+                    ::Label::Body_12, ThemeColor::TextSecondary),
+               row_flags);
+    sizer->AddSpacer(page->FromDIP(24));
+
     // Read the state each time the page shows: the dialog can outlive changes made elsewhere.
     const auto refresh = [page, enabled, status, reset] {
         const BridgeStatus now = bridge_status();
@@ -119,6 +130,20 @@ wxWindow *create_preferences_tab(wxWindow *parent)
     reset->Bind(wxEVT_BUTTON, [refresh](wxCommandEvent &) {
         reset_bridge_token();
         refresh();
+    });
+    reimport->Bind(wxEVT_BUTTON, [page](wxCommandEvent &) {
+        MessageDialog confirm(page,
+                              _L("The next time Studio starts, it backs up this build's presets, then copies presets and preset selections from the "
+                                 "official Bambu Studio: presets with the same name are replaced, the others stay. Continue?"),
+                              _L("Re-import from official Studio"), wxYES_NO | wxICON_QUESTION);
+        if (confirm.ShowModal() != wxID_YES)
+            return;
+        try {
+            request_reimport();
+            MessageDialog(page, _L("Quit and reopen Studio to re-import."), _L("Re-import from official Studio"), wxOK | wxICON_INFORMATION).ShowModal();
+        } catch (const std::exception &e) {
+            MessageDialog(page, wxString::FromUTF8(e.what()), _L("Re-import from official Studio"), wxOK | wxICON_ERROR).ShowModal();
+        }
     });
     page->Bind(wxEVT_SHOW, [refresh](wxShowEvent &event) {
         if (event.IsShown())
