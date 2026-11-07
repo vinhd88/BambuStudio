@@ -550,6 +550,8 @@ GUI/AgentBridge/AgentBridgeTypes.hpp
     GUI/AgentBridge/AgentBridgeFilamentHandlers.hpp
     GUI/AgentBridge/AgentBridgeHandoff.cpp
     GUI/AgentBridge/AgentBridgeHandoff.hpp
+    GUI/AgentBridge/AgentBridgeHandoffButton.cpp
+    GUI/AgentBridge/AgentBridgeHandoffButton.hpp
     GUI/AgentBridge/AgentBridgePresetSelection.cpp
     GUI/AgentBridge/AgentBridgePresetSelection.hpp
     GUI/AgentBridge/AgentBridgeRevertHandler.cpp

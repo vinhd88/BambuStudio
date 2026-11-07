@@ -280,7 +280,9 @@ public:
         eUploadGcode         = 7,
         eExportAllSlicedFile = 8,
         ePrintMultiMachine   = 9,
-        eSendMultiApp        = 10
+        eSendMultiApp        = 10,
+        // Agent build: hands a sliced copy to the official Bambu Studio (AgentBridgeHandoffButton).
+        eOpenInOfficialStudio = 11
     };
 
     void update_layout();

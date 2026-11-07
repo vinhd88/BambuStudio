@@ -1,5 +1,6 @@
 #include "MainFrame.hpp"
 #include "AgentBridge/AgentBridge.hpp"
+#include "AgentBridge/AgentBridgeHandoffButton.hpp"
 #include "GLToolbar.hpp"
 #include <wx/panel.h>
 #include <wx/notebook.h>
@@ -2298,6 +2299,8 @@ wxBoxSizer* MainFrame::create_side_tools()
                 wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_SEND_TO_PRINTER_ALL));
             else if (m_print_select == eSendMultiApp)
                 wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_SEND_MULTI_APP));
+            else if (m_print_select == eOpenInOfficialStudio)
+                AgentBridge::open_in_official_studio_from_button();
             /* else if (m_print_select == ePrintMultiMachine)
                  wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_PRINT_MULTI_MACHINE));*/
         });
@@ -2468,6 +2471,19 @@ wxBoxSizer* MainFrame::create_side_tools()
                 p->append_button(send_to_printer_all_btn);
                 p->append_button(export_sliced_file_btn);
                 p->append_button(export_all_sliced_file_btn);
+
+                // Agent build: slices the plate if needed, then opens a copy in the official app to print.
+                SideButton* official_studio_btn = new SideButton(p, _L("Open in official Studio"), "");
+                official_studio_btn->SetCornerRadius(0);
+                official_studio_btn->Bind(wxEVT_BUTTON, [this, p](wxCommandEvent&) {
+                    m_print_btn->SetLabel(_L("Open in official Studio"));
+                    m_print_select = eOpenInOfficialStudio;
+                    m_print_enable = get_enable_print_status();
+                    m_print_btn->Enable(m_print_enable);
+                    this->Layout();
+                    p->Dismiss();
+                    });
+                p->append_button(official_studio_btn);
 
 
                 if (check_bbl_farm_client_installed()) {
@@ -2670,6 +2686,12 @@ bool MainFrame::get_enable_print_status()
         }
         enable = enable && !is_all_plates;
     }
+    else if (m_print_select == eOpenInOfficialStudio)
+    {
+        // Needs no slice: the click slices the plate first. Off while a slice or a click is under way.
+        enable = !current_plate->empty() && !is_all_plates && !m_plater->only_gcode_mode() && !m_plater->using_exported_file() &&
+                 !m_plater->is_background_process_slicing() && !AgentBridge::button_handoff_pending();
+    }
 
     BOOST_LOG_TRIVIAL(info) << boost::format("m_print_select %1%, enable= %2% ")%m_print_select %enable;
 
@@ -2719,7 +2741,8 @@ void MainFrame::update_slice_print_status(SlicePrintEventType event, bool can_sl
         if (m_slice_select == eSlicePlate)
             enable_slice = false;
     }
-    if (!can_print)
+    // Callers pass can_print false for a plate without a current slice; the handoff slices it itself.
+    if (!can_print && m_print_select != eOpenInOfficialStudio)
         enable_print = false;
 
 
