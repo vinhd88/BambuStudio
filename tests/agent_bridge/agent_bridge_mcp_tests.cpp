@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -63,6 +64,14 @@ TEST_CASE("tool definitions list the 16 bridge tools with schemas", "[agent_brid
         CHECK(tool["inputSchema"]["type"] == "object");
     }
     CHECK(tools[0]["name"] == "get_studio_state");
+
+    // Every tool the dispatcher serves, and nothing else.
+    std::set<std::string> names;
+    for (const json &tool : tools)
+        names.insert(tool["name"].get<std::string>());
+    CHECK(names == std::set<std::string>{"apply_settings", "describe_settings", "get_filament", "get_job", "get_project", "get_settings",
+                                         "get_slice_result", "get_studio_state", "list_filaments", "list_presets", "open_in_official_studio",
+                                         "revert_change", "select_filament", "select_process_preset", "set_object_filament", "slice_plate"});
 }
 
 TEST_CASE("initialize negotiates the protocol version", "[agent_bridge]")

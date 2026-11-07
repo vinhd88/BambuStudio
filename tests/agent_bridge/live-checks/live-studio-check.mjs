@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Checks the whole path against a running custom Studio: MCP client -> adapter -> bridge -> UI thread.
+// Checks the whole path against a running custom Studio: MCP client -> BambuStudio --mcp-stdio -> bridge -> UI thread.
 // Run with Studio already open on a project and on the data dir below:
-//   BAMBU_AGENT_DATA_DIR=/path/to/dev-data node e2e/live-studio-check.mjs [--expect-empty] [--expect-process-changed=a,b]
+//   BAMBU_AGENT_DATA_DIR=/path/to/dev-data node live-studio-check.mjs [--expect-empty] [--expect-process-changed=a,b]
 // --expect-process-changed lists keys the project changes from its process preset. Find them in
 // different_settings_to_system in the 3MF's Metadata/project_settings.config.
 // With a dialog open in Studio, such as Preferences, add --expect-dialog to check that reads are refused.
@@ -19,10 +19,11 @@ const dataDir = process.env.BAMBU_AGENT_DATA_DIR;
 if (!dataDir) throw new Error('Set BAMBU_AGENT_DATA_DIR');
 const expectEmpty = process.argv.includes('--expect-empty');
 const expectChanged = process.argv.find((arg) => arg.startsWith('--expect-process-changed='))?.split('=')[1].split(',') ?? [];
-const serverPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'server.js');
+const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const binary = process.env.BAMBU_STUDIO_BINARY ?? join(repo, 'build', 'arm64', 'src', 'BambuStudio.app', 'Contents', 'MacOS', 'BambuStudio');
 
 const client = new Client({ name: 'live-studio-check', version: '1' });
-await client.connect(new StdioClientTransport({ command: process.execPath, args: [serverPath], env: { BAMBU_AGENT_DATA_DIR: dataDir, PATH: process.env.PATH } }));
+await client.connect(new StdioClientTransport({ command: binary, args: ['--mcp-stdio', '--datadir', dataDir] }));
 
 const slow = [];
 async function call(name, args = {}) {

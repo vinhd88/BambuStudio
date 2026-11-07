@@ -1,5 +1,5 @@
 # Agent bridge tests: auth, UI-thread dispatch, HTTP server and JSON conversion.
-# The GUI handlers need a running Studio; see tools/agent-bridge-mcp/e2e/live-studio-check.mjs.
+# The GUI handlers need a running Studio; see live-checks/README.md.
 get_filename_component(_TEST_NAME ${CMAKE_CURRENT_LIST_DIR} NAME)
 
 add_executable(${_TEST_NAME}_tests

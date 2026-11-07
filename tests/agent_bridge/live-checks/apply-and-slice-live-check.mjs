@@ -4,9 +4,9 @@
 // Spiral (vase) mode must be off: Studio then raises a dialog for infill changes, and the linked
 // settings check reads waiting_for_user instead.
 //
-//   BAMBU_AGENT_DATA_DIR=<dev-data> node e2e/apply-and-slice-live-check.mjs [--slice]
+//   BAMBU_AGENT_DATA_DIR=<dev-data> node apply-and-slice-live-check.mjs [--slice]
 import assert from 'node:assert/strict';
-import { callBridgeTool } from '../bridge-client.js';
+import { callBridgeTool } from './bridge-client.js';
 
 const call = (tool, args) => callBridgeTool(process.env, tool, args);
 const slice = process.argv.includes('--slice');

@@ -7,8 +7,8 @@
 
 #include <nlohmann/json.hpp>
 
-// Shared types for the agent bridge: a loopback HTTP API that lets the MCP adapter in
-// tools/agent-bridge-mcp read the project open in Studio, change its settings, and slice it.
+// Shared types for the agent bridge: a loopback HTTP API that lets the
+// --mcp-stdio helper (AgentBridgeMcpStdio) read the project open in Studio, change its settings, and slice it.
 namespace Slic3r { namespace GUI { namespace AgentBridge {
 
 struct BridgeResponse

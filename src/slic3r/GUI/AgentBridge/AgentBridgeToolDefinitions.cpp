@@ -1,6 +1,6 @@
 // MCP tools the --mcp-stdio helper lists. Kept here rather than fetched from Studio, so agents see
-// the same tools whether or not Studio is running. Ported from tools/agent-bridge-mcp/tool-definitions.js;
-// a parity test in that folder fails if the two lists differ while both exist.
+// the same tools whether or not Studio is running. The single source of the tool list: add a tool's
+// definition here when adding it to AgentBridgeToolDispatch.cpp.
 #include "AgentBridgeToolDefinitions.hpp"
 
 namespace Slic3r { namespace GUI { namespace AgentBridge {

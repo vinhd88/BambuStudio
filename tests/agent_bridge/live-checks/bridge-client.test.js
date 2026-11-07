@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, beforeEach, describe, it } from 'node:test';
 
-import { callBridgeTool, DATA_DIR_ENV } from '../bridge-client.js';
+import { callBridgeTool, DATA_DIR_ENV } from './bridge-client.js';
 
 const TOKEN = 'test-token';
 

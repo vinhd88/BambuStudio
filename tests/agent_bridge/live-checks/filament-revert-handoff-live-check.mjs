@@ -2,12 +2,12 @@
 // it on a scratch copy with no unsaved edits, at least one object, and spiral mode off (an A1 project works).
 // Every change it makes is reverted, and the settings afterwards must equal those before.
 //
-//   BAMBU_AGENT_DATA_DIR=<dev-data> node e2e/filament-revert-handoff-live-check.mjs [--handoff]
+//   BAMBU_AGENT_DATA_DIR=<dev-data> node filament-revert-handoff-live-check.mjs [--handoff]
 //
 // --handoff also slices the current plate and opens a copy in the official Studio.
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { BridgeCallError, callBridgeTool } from '../bridge-client.js';
+import { BridgeCallError, callBridgeTool } from './bridge-client.js';
 
 // Every change id this run made, so a failed check's leftovers can be reverted at the end.
 const made = [];

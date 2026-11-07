@@ -2,7 +2,7 @@
 // as an AI app would, against a running custom Studio. Read tools only, plus one rejected change;
 // nothing in the project changes. Each result must equal a direct bridge call.
 //
-//   BAMBU_AGENT_DATA_DIR=<dev-data> node e2e/mcp-stdio-live-check.mjs [path/to/BambuStudio]
+//   BAMBU_AGENT_DATA_DIR=<dev-data> node mcp-stdio-live-check.mjs [path/to/BambuStudio]
 import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
-import { callBridgeTool } from '../bridge-client.js';
+import { callBridgeTool } from './bridge-client.js';
 
 const dataDir = process.env.BAMBU_AGENT_DATA_DIR;
 assert.ok(dataDir, 'set BAMBU_AGENT_DATA_DIR to the --datadir Studio runs with');
