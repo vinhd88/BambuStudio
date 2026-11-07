@@ -2,6 +2,7 @@
 #include "GUI_App.hpp"
 #include "AgentBridge/AgentBridge.hpp"
 #include "AgentBridge/AgentBridgeAgentDataFolder.hpp"
+#include "AgentBridge/AgentBridgeConnectionsSection.hpp"
 #include "BindDialog.hpp"
 #include "GUI_Init.hpp"
 #include "GUI_ObjectList.hpp"
@@ -1197,6 +1198,7 @@ void GUI_App::post_init()
 
     AgentBridge::start_bridge();
     AgentBridge::show_startup_import_notice();
+    AgentBridge::check_ai_app_connections();
 
 
 

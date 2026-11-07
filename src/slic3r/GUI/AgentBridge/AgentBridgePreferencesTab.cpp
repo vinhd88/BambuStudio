@@ -11,6 +11,7 @@
 #include "slic3r/GUI/Widgets/StateColor.hpp"
 
 #include "AgentBridge.hpp"
+#include "AgentBridgeConnectionsSection.hpp"
 
 namespace Slic3r { namespace GUI { namespace AgentBridge {
 
@@ -94,6 +95,13 @@ wxWindow *create_preferences_tab(wxWindow *parent)
     sizer->Add(status, row_flags);
     sizer->AddSpacer(page->FromDIP(20));
 
+    sizer->Add(text(page, _L("Connect AI apps"), ::Label::Head_13, ThemeColor::TextSecondary), wxSizerFlags().Border(wxLEFT, page->FromDIP(TITLE_PADDING)));
+    sizer->AddSpacer(page->FromDIP(10));
+    const auto refresh_connections = add_connections_section(page, sizer, ROW_PADDING, TEXT_WIDTH, [page](const wxString &label) { return plain_button(page, label); });
+    sizer->AddSpacer(page->FromDIP(24));
+
+    sizer->Add(text(page, _L("Access token and presets"), ::Label::Head_13, ThemeColor::TextSecondary), wxSizerFlags().Border(wxLEFT, page->FromDIP(TITLE_PADDING)));
+    sizer->AddSpacer(page->FromDIP(10));
     auto *reset = plain_button(page, _L("Reset access token"));
     sizer->Add(reset, row_flags);
     sizer->AddSpacer(page->FromDIP(6));
@@ -112,7 +120,8 @@ wxWindow *create_preferences_tab(wxWindow *parent)
     sizer->AddSpacer(page->FromDIP(24));
 
     // Read the state each time the page shows: the dialog can outlive changes made elsewhere.
-    const auto refresh = [page, enabled, status, reset] {
+    const auto refresh = [page, enabled, status, reset, refresh_connections] {
+        refresh_connections();
         const BridgeStatus now = bridge_status();
         enabled->SetValue(now.enabled);
         status->SetLabel(status_text(now));
