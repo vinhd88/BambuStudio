@@ -1,9 +1,5 @@
 #include "AgentBridgeProjectJson.hpp"
 
-#include <cmath>
-
-#include "libslic3r/ExtrusionEntity.hpp"
-
 #include "AgentBridgeSettingsJson.hpp"
 
 using nlohmann::json;
@@ -36,8 +32,6 @@ int filament_slot(const ModelVolume &volume)
     const int extruder = volume.extruder_id();
     return extruder <= 0 ? 1 : extruder;
 }
-
-double rounded(double value, double scale = 100.0) { return std::round(value * scale) / scale; }
 
 json part_to_json(const ModelVolume &volume, size_t index)
 {
@@ -82,55 +76,6 @@ json model_objects_to_json(const Model &model)
     for (size_t i = 0; i < model.objects.size(); ++i)
         objects.push_back(object_to_json(*model.objects[i], i));
     return objects;
-}
-
-json slice_result_to_json(const GCodeProcessorResult &result)
-{
-    using Stats = PrintEstimatedStatistics;
-    const Stats::Mode &mode = result.print_statistics.modes[static_cast<size_t>(Stats::ETimeMode::Normal)];
-
-    json features = json::array();
-    for (const auto &role : mode.roles_times)
-        if (role.second > 0.f)
-            features.push_back({{"feature", ExtrusionEntity::role_to_string(role.first)}, {"time_s", rounded(role.second, 10.0)}});
-
-    json   filaments = json::array();
-    double total_g   = 0.0;
-    double total_m   = 0.0;
-    for (const auto &used : result.print_statistics.total_volumes_per_extruder) {
-        const size_t id       = used.first;
-        const double diameter = id < result.filament_diameters.size() ? result.filament_diameters[id] : 0.0;
-        const double density  = id < result.filament_densities.size() ? result.filament_densities[id] : 0.0;
-        // mm^3 * g/cm^3 / 1000 gives grams; mm^3 / filament cross-section gives mm.
-        const double grams  = used.second * density / 1000.0;
-        const double area   = M_PI * diameter * diameter / 4.0;
-        const double meters = area > 0.0 ? used.second / area / 1000.0 : 0.0;
-        total_g += grams;
-        total_m += meters;
-        filaments.push_back({{"slot", id + 1}, {"used_g", rounded(grams)}, {"used_m", rounded(meters)}});
-    }
-
-    json warnings = json::array();
-    for (const auto &warning : result.warnings)
-        warnings.push_back({{"level", warning.level}, {"message", warning.msg}, {"code", warning.error_code}});
-
-    json out = {
-        {"time_s", rounded(mode.time, 1.0)},
-        {"prepare_time_s", rounded(mode.prepare_time, 1.0)},
-        {"layers", mode.layers_times.size()},
-        {"total_g", rounded(total_g)},
-        {"total_m", rounded(total_m)},
-        {"filaments", std::move(filaments)},
-        {"features", std::move(features)},
-        {"warnings", std::move(warnings)},
-    };
-    if (result.toolpath_outside)
-        out["toolpath_outside"] = true;
-    if (result.gcode_check_result.error_code != 0)
-        out["gcode_check_error_code"] = result.gcode_check_result.error_code;
-    if (result.conflict_result)
-        out["conflict"] = {{"object_a", result.conflict_result->_objName1}, {"object_b", result.conflict_result->_objName2}, {"height", result.conflict_result->_height}};
-    return out;
 }
 
 }}} // namespace Slic3r::GUI::AgentBridge

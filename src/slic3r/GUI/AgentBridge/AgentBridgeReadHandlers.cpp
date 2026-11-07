@@ -13,6 +13,8 @@
 #include "AgentBridgeModalGuard.hpp"
 #include "AgentBridgeMutationGate.hpp"
 #include "AgentBridgeProjectJson.hpp"
+#include "AgentBridgeSliceBreakdownJson.hpp"
+#include "AgentBridgeSliceResultJson.hpp"
 #include "AgentBridgeSettingsJson.hpp"
 #include "AgentBridgeSliceJobs.hpp"
 
@@ -21,6 +23,21 @@ using nlohmann::json;
 namespace Slic3r { namespace GUI { namespace AgentBridge {
 
 namespace {
+// G-code label id of each object instance on the plate, the id G-code labels its moves with.
+ObjectLabels object_labels(const Model &model, PartPlate &plate)
+{
+    ObjectLabels labels;
+    for (const auto &[object, instance] : plate.get_obj_and_inst_set()) {
+        if (object < 0 || size_t(object) >= model.objects.size())
+            continue;
+        const ModelObject &model_object = *model.objects[size_t(object)];
+        if (instance < 0 || size_t(instance) >= model_object.instances.size())
+            continue;
+        labels[int(model_object.instances[size_t(instance)]->get_labeled_id())] = {object + 1, instance + 1, model_object.name};
+    }
+    return labels;
+}
+
 json plate_to_json(PartPlate &plate, int current_index)
 {
     json instances = json::array();
@@ -105,6 +122,8 @@ json get_slice_result(const json &args)
 {
     Plater        &plater = *wxGetApp().plater();
     PartPlateList &plates = plater.get_partplate_list();
+    // Checked first so a bad argument fails the same way whatever the plate's state.
+    const BreakdownRequest breakdown = parse_breakdown_request(args);
 
     int index = optional_index_arg(args, "plate", plates.get_plate_count());
     if (index < 0)
@@ -129,6 +148,10 @@ json get_slice_result(const json &args)
     if (index != plates.get_curr_plate_index() || settings_changed_since_last_slice())
         out["may_be_stale"] = true;
     out.update(slice_result_to_json(*result));
+    if (breakdown.layers)
+        out.update(slice_layers_to_json(*result, breakdown.layer_from, breakdown.layer_to));
+    if (breakdown.objects)
+        out.update(slice_objects_to_json(*result, object_labels(plater.model(), plate)));
     return out;
 }
 

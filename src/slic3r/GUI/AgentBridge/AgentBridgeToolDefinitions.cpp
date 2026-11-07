@@ -165,13 +165,35 @@ const char *const TOOLS_JSON = R"tools([
   },
   {
     "name": "get_slice_result",
-    "description": "Slice result of a plate: state (ready, not_sliced, empty_plate, slicing), then when ready the time, per-feature time, filament use and warnings. may_be_stale means the plate is not on screen, so Studio has not re-checked it against settings changed since it was sliced. Default current plate.",
+    "description": "Slice result of a plate, with the numbers the Studio preview panel shows. state: ready, not_sliced, empty_plate, slicing (with progress_percent). When ready: time_s is the total time = prepare_time_s + timelapse_time_s + model_time_s (the panel's Model printing time); first_layer_time_s; layers; max_z_mm; filament_changes, flush_filament_changes. features: per line type time_s, percent of total time, used_g and used_m. moves: travel time_s and percent, and counts of retract, unretract, wipe, seam and filament change. Plate filament: total_g/total_m (panel Total Filament), model_g/model_m (panel Model Filament), support_g, flushed_g, tower_g, cost. filaments: per slot used_g, used_m, the panel's model_g, support_g, flushed_g, tower_g columns and their sum total_g, and cost. ranges: [min, max] of layer height, line width, speed, fan, temperature, volumetric flow and layer time, as in the legend. custom_gcode: pauses and colour changes with z_mm and at_time_s (time into the print). warnings, and toolpath_outside, gcode_check_error_code, conflict only when there is a problem. include [\"layers\"] adds layers_detail rows (layer, z_mm, height_mm, time_s, used_g, slots), at most 2000 per call (layers_truncated): page with layer_from and layer_to. layer_time_source moves means the times are estimates summed from moves, not Studio's own. include [\"objects\"] adds objects_detail: per object instance object, instance, name, time_s, percent, used_g, plus an other row (prepare, travel between objects, tower, flushing); rows sum to time_s. It needs 2 to 64 object instances on the plate, otherwise objects_unavailable says why. may_be_stale means the plate is not on screen, so Studio has not re-checked it against settings changed since it was sliced. Default current plate.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "plate": {
           "type": "integer",
           "minimum": 1
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "layers",
+              "objects"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "Extra detail: layers for per-layer rows, objects for per-object time and filament."
+        },
+        "layer_from": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "First layer row to return (with include layers)."
+        },
+        "layer_to": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Last layer row to return (with include layers)."
         }
       },
       "additionalProperties": false

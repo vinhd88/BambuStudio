@@ -529,7 +529,13 @@ GUI/AgentBridge/AgentBridgeSafetyRules.hpp
 GUI/AgentBridge/AgentBridgeSettingValue.cpp
 GUI/AgentBridge/AgentBridgeSettingValue.hpp
 GUI/AgentBridge/AgentBridgeSliceJobs.cpp
+GUI/AgentBridge/AgentBridgeSliceBreakdownJson.cpp
+GUI/AgentBridge/AgentBridgeSliceBreakdownJson.hpp
 GUI/AgentBridge/AgentBridgeSliceJobs.hpp
+GUI/AgentBridge/AgentBridgeSliceMoveStatsJson.cpp
+GUI/AgentBridge/AgentBridgeSliceMoveStatsJson.hpp
+GUI/AgentBridge/AgentBridgeSliceResultJson.cpp
+GUI/AgentBridge/AgentBridgeSliceResultJson.hpp
 GUI/AgentBridge/AgentBridgeToolDispatch.cpp
 GUI/AgentBridge/AgentBridgeToolDispatch.hpp
 GUI/AgentBridge/AgentBridgeArgs.hpp

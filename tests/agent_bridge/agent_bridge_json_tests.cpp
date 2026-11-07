@@ -8,6 +8,7 @@
 #include "libslic3r/TriangleMesh.hpp"
 
 #include "slic3r/GUI/AgentBridge/AgentBridgeProjectJson.hpp"
+#include "slic3r/GUI/AgentBridge/AgentBridgeSliceResultJson.hpp"
 #include "slic3r/GUI/AgentBridge/AgentBridgeArgs.hpp"
 #include "slic3r/GUI/AgentBridge/AgentBridgeSettingsJson.hpp"
 #include "slic3r/GUI/AgentBridge/AgentBridgeSettingsTabMap.hpp"
