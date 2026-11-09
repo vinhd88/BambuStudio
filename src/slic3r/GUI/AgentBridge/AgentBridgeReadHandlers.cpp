@@ -1,4 +1,5 @@
 #include "AgentBridgeReadHandlers.hpp"
+#include "AgentBridgeGeometryJobs.hpp"
 
 #include "libslic3r/PresetBundle.hpp"
 #include "libslic3r_version.h"
@@ -60,6 +61,7 @@ json plate_to_json(PartPlate &plate, int current_index)
 
 json get_studio_state(const json &)
 {
+    settle_geometry_jobs();
     Plater        &plater = *wxGetApp().plater();
     PartPlateList &plates = plater.get_partplate_list();
     PresetBundle  &bundle = *wxGetApp().preset_bundle;

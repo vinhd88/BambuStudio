@@ -269,7 +269,7 @@ const char *const TOOLS_JSON = R"tools([
   },
   {
     "name": "get_job",
-    "description": "State of a slice job from slice_plate: queued, slicing (with progress_percent), done (with the result, as get_slice_result), failed or blocked (with a reason). result_outdated means settings or the plate changed after the slice. Works while a dialog is open.",
+    "description": "State of a slice job from slice_plate: queued, slicing (with progress_percent), done (with the result, as get_slice_result), failed or blocked (with a reason). result_outdated means settings or the plate changed after the slice. Also reports jobs from orient_objects and arrange_plate (ids starting with g): state running or done, with the object list when done. Works while a dialog is open.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -357,7 +357,7 @@ const char *const TOOLS_JSON = R"tools([
   },
   {
     "name": "revert_change",
-    "description": "Undo the newest agent change not yet undone: settings, filament or process preset picks, or object filament. Changes are undone newest first; call again to go further back. status refused (with changed_since) means the user changed those values afterwards, or picked another preset, and nothing was reverted. A refused or failed change blocks older ones; after telling the user, call again with skip true and its change_id to leave it as it is and move past it. not_restored lists values Studio set differently while restoring. Works on this Studio session's changes in the open project only.",
+    "description": "Undo the newest agent change not yet undone: settings, filament or process preset picks, object filament, or a geometry/layout change (orient, arrange, transform, split, add model or plate: undone through Studio's undo history, so refused if the user changed the project or used Undo since). Changes are undone newest first; call again to go further back. status refused (with changed_since) means the user changed those values afterwards, or picked another preset, and nothing was reverted. A refused or failed change blocks older ones; after telling the user, call again with skip true and its change_id to leave it as it is and move past it. not_restored lists values Studio set differently while restoring. Works on this Studio session's changes in the open project only.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -387,7 +387,13 @@ const char *const TOOLS_JSON = R"tools([
 
 const nlohmann::json &tool_definitions()
 {
-    static const nlohmann::json tools = nlohmann::json::parse(TOOLS_JSON);
+    static const nlohmann::json tools = [] {
+        nlohmann::json all = nlohmann::json::parse(TOOLS_JSON);
+        for (const char *more : {geometry_tool_definitions_json(), mesh_tool_definitions_json(), paint_text_tool_definitions_json()})
+            for (nlohmann::json &tool : nlohmann::json::parse(more))
+                all.push_back(std::move(tool));
+        return all;
+    }();
     return tools;
 }
 

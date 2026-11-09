@@ -22,8 +22,9 @@ Node 20+, then `npm install` in this folder once. Start the dev build on its own
 | `mcp-stdio-live-check.mjs` | no | Each read tool via `--mcp-stdio` equals a direct bridge call |
 | `apply-and-slice-live-check.mjs` | yes, reverted | Settings changes at each level, live UI, optional slice (`--slice`) |
 | `slice-result-parity-live-check.mjs` | no (`--slice` slices) | `get_slice_result` vs the preview panel: prints panel-labelled numbers to compare by eye, checks time/filament/layer/object sums |
+| `geometry-tools-live-check.mjs` | yes, reverted | 3D view toolbar tools (orient, arrange, transform, cut, layer height, brim ears, lay on face, simplify, paint, text, boolean, add model/plate, split); each change reverted and the objects compared |
 | `filament-revert-handoff-live-check.mjs` | yes, reverted | Filament/process presets, object filament, revert order, skip; `--handoff` opens a sliced copy in the official Studio |
 
-Run any of them with `BAMBU_AGENT_DATA_DIR=<DATA_DIR> node <script>`. Close dialogs in Studio first; scripts that change things need spiral mode off and no unsaved edits.
+Run any of them with `BAMBU_AGENT_DATA_DIR=<DATA_DIR> node <script>`. Close dialogs in Studio first; scripts that change things need spiral mode off and no unsaved edits. `apply-and-slice-live-check.mjs` leaves its changes in place: revert them (or reload the scratch copy) before running another script.
 
 `npm test` runs `bridge-client.test.js`, a unit test of the small client these scripts use (no Studio needed).

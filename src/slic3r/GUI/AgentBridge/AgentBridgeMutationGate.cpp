@@ -33,6 +33,9 @@ void require_can_mutate()
     // Studio would cancel the slice to apply a change, which a client that started it would not expect.
     if (plater.is_background_process_slicing())
         throw BridgeError(409, "slicing_in_progress", "Studio is slicing. Nothing was changed. Wait for it to finish; get_job reports progress.");
+    // Starting another arrange/orient (or a change under one) would cancel or race the running job.
+    if (plater.is_any_job_running())
+        throw BridgeError(409, "job_running", "A Studio job (arrange, orient, ...) is running. Nothing was changed. Wait for it; get_job reports it.");
     if (plater.only_gcode_mode() || plater.is_gcode_3mf())
         throw BridgeError(409, "gcode_project", "The open file is sliced G-code, which has no settings to change or slice.");
 }

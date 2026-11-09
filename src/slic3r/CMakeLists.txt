@@ -548,6 +548,39 @@ GUI/AgentBridge/AgentBridgeSettingsDefinitionJson.cpp
 GUI/AgentBridge/AgentBridgeTypes.hpp
     GUI/AgentBridge/AgentBridgeFilamentHandlers.cpp
     GUI/AgentBridge/AgentBridgeFilamentHandlers.hpp
+    GUI/AgentBridge/AgentBridgeGeometryChange.cpp
+    GUI/AgentBridge/AgentBridgeGeometryChange.hpp
+    GUI/AgentBridge/AgentBridgeGeometryJobs.cpp
+    GUI/AgentBridge/AgentBridgeGeometryJobs.hpp
+    GUI/AgentBridge/AgentBridgeGeometryRevertCheck.cpp
+    GUI/AgentBridge/AgentBridgeGeometryRevertCheck.hpp
+    GUI/AgentBridge/AgentBridgeCanvasSelection.cpp
+    GUI/AgentBridge/AgentBridgeCanvasSelection.hpp
+    GUI/AgentBridge/AgentBridgeGeometryReadJson.cpp
+    GUI/AgentBridge/AgentBridgeGeometryReadJson.hpp
+    GUI/AgentBridge/AgentBridgeGeometryToolDefinitions.cpp
+    GUI/AgentBridge/AgentBridgeLayoutHandlers.cpp
+    GUI/AgentBridge/AgentBridgeLayoutHandlers.hpp
+    GUI/AgentBridge/AgentBridgeTransformHandlers.cpp
+    GUI/AgentBridge/AgentBridgeTransformHandlers.hpp
+    GUI/AgentBridge/AgentBridgeBrimEarsHandler.cpp
+    GUI/AgentBridge/AgentBridgeBrimEarsHandler.hpp
+    GUI/AgentBridge/AgentBridgeCutHandler.cpp
+    GUI/AgentBridge/AgentBridgeCutHandler.hpp
+    GUI/AgentBridge/AgentBridgeFlattenFaces.cpp
+    GUI/AgentBridge/AgentBridgeFlattenFaces.hpp
+    GUI/AgentBridge/AgentBridgeLayerHeightHandler.cpp
+    GUI/AgentBridge/AgentBridgeLayerHeightHandler.hpp
+    GUI/AgentBridge/AgentBridgeMeshToolDefinitions.cpp
+    GUI/AgentBridge/AgentBridgeSimplifyHandler.cpp
+    GUI/AgentBridge/AgentBridgeSimplifyHandler.hpp
+    GUI/AgentBridge/AgentBridgeMeshBooleanHandler.cpp
+    GUI/AgentBridge/AgentBridgeMeshBooleanHandler.hpp
+    GUI/AgentBridge/AgentBridgePaintHandler.cpp
+    GUI/AgentBridge/AgentBridgePaintHandler.hpp
+    GUI/AgentBridge/AgentBridgePaintTextToolDefinitions.cpp
+    GUI/AgentBridge/AgentBridgeTextHandler.cpp
+    GUI/AgentBridge/AgentBridgeTextHandler.hpp
     GUI/AgentBridge/AgentBridgeHandoff.cpp
     GUI/AgentBridge/AgentBridgeHandoff.hpp
     GUI/AgentBridge/AgentBridgeHandoffButton.cpp

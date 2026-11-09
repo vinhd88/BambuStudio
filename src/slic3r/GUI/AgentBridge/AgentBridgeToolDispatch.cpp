@@ -8,6 +8,17 @@
 
 #include "AgentBridgeApplyHandlers.hpp"
 #include "AgentBridgeFilamentHandlers.hpp"
+#include "AgentBridgeBrimEarsHandler.hpp"
+#include "AgentBridgeCutHandler.hpp"
+#include "AgentBridgeFlattenFaces.hpp"
+#include "AgentBridgeGeometryReadJson.hpp"
+#include "AgentBridgeLayerHeightHandler.hpp"
+#include "AgentBridgeMeshBooleanHandler.hpp"
+#include "AgentBridgePaintHandler.hpp"
+#include "AgentBridgeTextHandler.hpp"
+#include "AgentBridgeSimplifyHandler.hpp"
+#include "AgentBridgeLayoutHandlers.hpp"
+#include "AgentBridgeTransformHandlers.hpp"
 #include "AgentBridgeHandoff.hpp"
 #include "AgentBridgeModalGuard.hpp"
 #include "AgentBridgeMutationGate.hpp"
@@ -51,6 +62,22 @@ const std::unordered_map<std::string, Tool> &tools()
         {"select_process_preset", {select_process_preset, Gate::Mutate}},
         {"set_object_filament", {set_object_filament, Gate::Mutate}},
         {"revert_change", {revert_change, Gate::Mutate}},
+        {"get_object_geometry", {get_object_geometry, Gate::Read}},
+        {"orient_objects", {orient_objects, Gate::Mutate}},
+        {"arrange_plate", {arrange_plate, Gate::Mutate}},
+        {"transform_object", {transform_object, Gate::Mutate}},
+        {"split_object", {split_object, Gate::Mutate}},
+        {"add_plate", {add_plate, Gate::Mutate}},
+        {"add_model", {add_model, Gate::Mutate}},
+        {"set_variable_layer_height", {set_variable_layer_height, Gate::Mutate}},
+        {"cut_object", {cut_object, Gate::Mutate}},
+        {"brim_ears", {brim_ears, Gate::Mutate}},
+        // list_only reads, but the face turn changes the project; the gate is the stricter one.
+        {"lay_on_face", {lay_on_face, Gate::Mutate}},
+        {"simplify_object", {simplify_object, Gate::Mutate}},
+        {"paint_facets", {paint_facets, Gate::Mutate}},
+        {"add_text", {add_text, Gate::Mutate}},
+        {"mesh_boolean", {mesh_boolean, Gate::Mutate}},
         // Changes nothing, but saves a copy, which needs a quiet Studio just as a change does.
         {"open_in_official_studio", {open_in_official_studio, Gate::Mutate}},
     };

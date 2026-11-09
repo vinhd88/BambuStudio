@@ -27,7 +27,8 @@ struct JournalValue
 };
 
 // What a record changed, which decides how revert_change undoes it.
-enum class ChangeKind { Settings, FilamentPreset, ProcessPreset, ObjectFilament };
+// Geometry: layout or mesh changes, undone through Studio's undo stack (restore holds the snapshot range).
+enum class ChangeKind { Settings, FilamentPreset, ProcessPreset, ObjectFilament, Geometry };
 
 struct ChangeRecord
 {

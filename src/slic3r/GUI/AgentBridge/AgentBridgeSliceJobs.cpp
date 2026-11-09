@@ -15,6 +15,7 @@
 #include "slic3r/GUI/Event.hpp"
 
 #include "AgentBridgeArgs.hpp"
+#include "AgentBridgeGeometryJobs.hpp"
 #include "AgentBridgeMutationGate.hpp"
 #include "AgentBridgeSliceResultJson.hpp"
 
@@ -194,6 +195,8 @@ json get_job(const json &args)
     const std::string id = string_arg(args, "job_id");
     if (id.empty())
         throw BridgeError(400, "invalid_args", "job_id is required");
+    if (is_geometry_job_id(id))
+        return geometry_job_status(id);
     SliceJob *job = find_job(id);
     if (job == nullptr)
         throw BridgeError(404, "not_found", "No job " + id + ". Only recent jobs in this Studio session are kept.");

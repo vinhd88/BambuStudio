@@ -54,11 +54,11 @@ struct TempDir
 };
 } // namespace
 
-TEST_CASE("tool definitions list the 16 bridge tools with schemas", "[agent_bridge]")
+TEST_CASE("tool definitions list the 31 bridge tools with schemas", "[agent_bridge]")
 {
     const json &tools = tool_definitions();
     REQUIRE(tools.is_array());
-    CHECK(tools.size() == 16);
+    CHECK(tools.size() == 31);
     for (const json &tool : tools) {
         CHECK(tool["name"].is_string());
         CHECK(tool["description"].is_string());
@@ -72,7 +72,10 @@ TEST_CASE("tool definitions list the 16 bridge tools with schemas", "[agent_brid
         names.insert(tool["name"].get<std::string>());
     CHECK(names == std::set<std::string>{"apply_settings", "describe_settings", "get_filament", "get_job", "get_project", "get_settings",
                                          "get_slice_result", "get_studio_state", "list_filaments", "list_presets", "open_in_official_studio",
-                                         "revert_change", "select_filament", "select_process_preset", "set_object_filament", "slice_plate"});
+                                         "revert_change", "select_filament", "select_process_preset", "set_object_filament", "slice_plate",
+                                         "get_object_geometry", "orient_objects", "arrange_plate", "transform_object", "split_object",
+                                         "add_plate", "add_model", "set_variable_layer_height", "cut_object", "brim_ears",
+                                         "lay_on_face", "simplify_object", "paint_facets", "add_text", "mesh_boolean"});
 }
 
 TEST_CASE("initialize negotiates the protocol version", "[agent_bridge]")

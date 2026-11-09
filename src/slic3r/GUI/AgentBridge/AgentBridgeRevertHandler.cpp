@@ -13,6 +13,7 @@
 #include "AgentBridgeArgs.hpp"
 #include "AgentBridgeChangeJournal.hpp"
 #include "AgentBridgeFilamentHandlers.hpp"
+#include "AgentBridgeGeometryChange.hpp"
 #include "AgentBridgeMutationGate.hpp"
 #include "AgentBridgePresetSelection.hpp"
 #include "AgentBridgeSettingsJson.hpp"
@@ -216,6 +217,7 @@ json revert_change(const json &args)
         case ChangeKind::FilamentPreset: result = revert_filament_preset(*newest); break;
         case ChangeKind::ProcessPreset:  result = revert_process_preset(*newest); break;
         case ChangeKind::ObjectFilament: result = revert_object_filament(*newest); break;
+        case ChangeKind::Geometry:       result = revert_geometry_change(*newest); break;
         default:                         result = revert_settings(*newest); break;
         }
     } catch (const BridgeError &e) {
