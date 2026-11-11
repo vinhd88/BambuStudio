@@ -1,7 +1,10 @@
 #include "AgentBridgeSettingsJson.hpp"
 
 #include <cmath>
+#include <memory>
+#include <mutex>
 #include <set>
+#include <unordered_map>
 
 #include <boost/algorithm/string.hpp>
 
@@ -104,6 +107,23 @@ std::string first_string_value(const DynamicPrintConfig &config, const std::stri
 {
     const auto *option = config.option<ConfigOptionStrings>(key);
     return option != nullptr && !option->values.empty() ? option->values.front() : std::string();
+}
+
+const ConfigOption *definition_default(const ConfigOptionDef &def)
+{
+    if (!def.default_value)
+        return nullptr;
+    const ConfigOptionType type = def.default_value->type();
+    // Enum defaults get their name table from the definition; without one they cannot be read safely.
+    if ((type == coEnum || type == coEnums) && def.enum_keys_map == nullptr)
+        return nullptr;
+    static std::mutex                                                          mutex;
+    static std::unordered_map<const ConfigOptionDef *, std::unique_ptr<ConfigOption>> cache;
+    std::lock_guard<std::mutex> lock(mutex);
+    auto &slot = cache[&def];
+    if (!slot)
+        slot.reset(def.create_default_option());
+    return slot.get();
 }
 
 json option_to_json(const ConfigOption &option)

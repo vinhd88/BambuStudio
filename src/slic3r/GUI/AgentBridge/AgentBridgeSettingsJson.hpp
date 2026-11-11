@@ -32,6 +32,11 @@ bool is_setting_exposed(const std::string &key);
 // False for bookkeeping keys (inherits, *_settings_id, ...) that are not settings.
 bool is_user_setting(const std::string &key);
 
+// A setting's default as Studio builds it (ConfigOptionDef::create_default_option). Use this, never
+// def.default_value directly: for enum lists that one has no name table, and serializing it crashes.
+// Null if the setting has no default. Cached for the process; definitions never change.
+const ConfigOption *definition_default(const ConfigOptionDef &def);
+
 nlohmann::json option_to_json(const ConfigOption &option);
 
 // First element of a string-list option, or "" if absent or empty. Use instead of opt_string(key, 0),

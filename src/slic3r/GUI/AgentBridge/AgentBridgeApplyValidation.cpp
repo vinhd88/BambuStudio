@@ -13,6 +13,7 @@
 
 #include "AgentBridgeArgs.hpp"
 #include "AgentBridgeSettingValue.hpp"
+#include "AgentBridgeSettingsJson.hpp"
 #include "AgentBridgeSettingsTabMap.hpp"
 
 using nlohmann::json;
@@ -80,7 +81,7 @@ const ConfigOption *effective_value(const Target &target, const std::string &key
     if (const ConfigOption *global = bundle().prints.get_edited_preset().config.option(key))
         return global;
     const ConfigOptionDef *def = print_config_def.get(key);
-    return def != nullptr ? def->default_value.get() : nullptr;
+    return def != nullptr ? definition_default(*def) : nullptr;
 }
 } // namespace
 

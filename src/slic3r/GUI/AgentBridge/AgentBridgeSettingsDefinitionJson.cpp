@@ -52,8 +52,8 @@ json setting_definition_to_json(const std::string &key, const ConfigOptionDef &d
         out["min"] = def.min;
     if (def.max != ConfigOptionDef::max_default)
         out["max"] = def.max;
-    if (def.default_value)
-        out["default"] = option_to_json(*def.default_value);
+    if (const ConfigOption *fallback = definition_default(def))
+        out["default"] = option_to_json(*fallback);
     if (def.nullable)
         out["nullable"] = true;
     if (!def.enum_values.empty()) {

@@ -323,3 +323,15 @@ TEST_CASE("slice_result_to_json", "[agent_bridge]")
         CHECK(bad["conflict"]["object_a"] == "A");
     }
 }
+
+// describe_settings crashed (null enum name table) on enum-list defaults; every definition must convert.
+TEST_CASE("setting_definition_to_json converts every Studio setting", "[agent_bridge]")
+{
+    size_t enum_lists = 0;
+    for (const auto &[key, def] : print_config_def.options) {
+        if (def.default_value && def.default_value->type() == coEnums)
+            ++enum_lists;
+        CHECK_NOTHROW(setting_definition_to_json(key, def));
+    }
+    CHECK(enum_lists > 0);
+}
