@@ -25,6 +25,9 @@ using ToolCaller = std::function<ToolCallOutcome(const std::string &tool, const 
 // MCP protocol versions this helper speaks, newest first.
 extern const char *const MCP_PROTOCOL_VERSIONS[3];
 
+// How agents should use these tools; sent as `instructions` in the initialize reply.
+const char *mcp_server_instructions();
+
 // Handles one JSON-RPC message (one line of stdin). Returns the reply to write, or nullopt for
 // notifications and for responses the client sends, which get none.
 std::optional<std::string> handle_mcp_message(const std::string &line, const ToolCaller &call_tool);

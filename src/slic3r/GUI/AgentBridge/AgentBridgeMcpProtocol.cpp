@@ -41,6 +41,32 @@ std::string error_reply(const json &id, int code, const std::string &message)
     return dump_json({{"jsonrpc", "2.0"}, {"id", id}, {"error", {{"code", code}, {"message", message}}}});
 }
 
+} // namespace
+
+// Sent once in the initialize reply. Clients that support it (Claude, Codex, Gemini and others) put
+// it in the agent's context, so every agent gets the rules without a client-specific skill. Keep it
+// short: it costs tokens in every session. Tool names in it are checked against tool_definitions()
+// by a test.
+const char *mcp_server_instructions()
+{
+    return R"text(Bambu Studio (agent build): these tools read and change the project open in Studio, live, as the user would in the UI. Studio does one thing at a time. Plates, objects, parts and filament slots count from 1, as in the UI.
+
+Start with get_studio_state (is Studio usable, open dialog, running job, last_change), then get_project once.
+
+Rules:
+- Say what you want to change and why, and get the user's OK before any change: settings, presets, filaments or the model. Use only setting names and value forms that get_settings or describe_settings returned.
+- Change one thing, then slice_plate and poll get_job every 15-30 s (a slice takes about 30-60 s), then compare time and filament with get_slice_result. If it reports result_outdated or may_be_stale, slice again first.
+- Every change returns a change_id. revert_change undoes the newest change first; settings and model changes share one stack, so revert a failed experiment before trying the next. A model change cannot be reverted once the user has edited the project after it.
+- Model tools (orient_objects, arrange_plate, transform_object, split_object, cut_object, lay_on_face, set_variable_layer_height, brim_ears, paint_facets, add_text, mesh_boolean, simplify_object, add_model, add_plate) change the model; get_object_geometry reads sizes and faces. Object and part numbers shift after split, cut, add_model and mesh_boolean: use the list each result returns. orient_objects and arrange_plate return a job_id: poll get_job.
+- A call that returns in_progress is still running: do not repeat it, read the outcome from last_change (or last_handoff) in get_studio_state.
+- studio_busy: wait, then call get_studio_state. waiting_for_user: a dialog is open in Studio; ask the user to answer it, never work around it.
+- add_model and font_path: only paths the user gave.
+- Printer settings and G-code are read-only. Keep temperatures within the filament's range.
+- get_settings returns only changed values by default; pass a category, and use include_defaults only together with a category, or the output is huge.
+- Nothing is saved: changes live in the open project until the user saves it. These tools cannot print. When the user wants to print, call open_in_official_studio (the plate must be sliced) and tell them to check the plate and start the print in the official Bambu Studio.)text";
+}
+
+namespace {
 json initialize_result(const json &params)
 {
     // The client's version if this helper speaks it, else the newest one; the client decides
@@ -50,7 +76,8 @@ json initialize_result(const json &params)
     const std::string version = known != std::end(MCP_PROTOCOL_VERSIONS) ? wanted : MCP_PROTOCOL_VERSIONS[0];
     return {{"protocolVersion", version},
             {"capabilities", {{"tools", json::object()}}},
-            {"serverInfo", {{"name", "bambu-studio"}, {"version", SLIC3R_VERSION}}}};
+            {"serverInfo", {{"name", "bambu-studio"}, {"version", SLIC3R_VERSION}}},
+            {"instructions", mcp_server_instructions()}};
 }
 
 bool is_known_tool(const std::string &name)

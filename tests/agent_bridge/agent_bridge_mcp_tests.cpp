@@ -2,6 +2,7 @@
 // and the stdin/stdout loop. The client tests use a real bridge server on a real socket.
 #include <catch2/catch.hpp>
 
+#include <cctype>
 #include <chrono>
 #include <cstdlib>
 #include <memory>
@@ -88,6 +89,36 @@ TEST_CASE("initialize negotiates the protocol version", "[agent_bridge]")
 
     const json unknown = rpc(request("initialize", {{"protocolVersion", "1999-01-01"}}));
     CHECK(unknown["result"]["protocolVersion"] == MCP_PROTOCOL_VERSIONS[0]);
+    CHECK(known["result"]["instructions"] == mcp_server_instructions());
+}
+
+TEST_CASE("server instructions name only tools that exist", "[agent_bridge]")
+{
+    std::set<std::string> tools;
+    for (const json &tool : tool_definitions())
+        tools.insert(tool["name"].get<std::string>());
+    // snake_case words in the text that are fields, states or error codes rather than tools.
+    const std::set<std::string> not_tools = {"last_change", "last_handoff", "change_id", "job_id", "result_outdated", "may_be_stale",
+                                             "in_progress", "studio_busy", "waiting_for_user", "font_path", "include_defaults"};
+    const std::string text = mcp_server_instructions();
+    CHECK(text.size() < 4000); // in every agent's context: keep it short
+    std::set<std::string> mentioned;
+    for (std::size_t i = 0; i < text.size();) {
+        std::size_t j = i;
+        while (j < text.size() && (std::islower(static_cast<unsigned char>(text[j])) || text[j] == '_'))
+            ++j;
+        const std::string word = text.substr(i, j - i);
+        if (word.find('_') != std::string::npos && word.front() != '_' && word.back() != '_') {
+            mentioned.insert(word);
+            if (not_tools.count(word) == 0) {
+                INFO(word);
+                CHECK(tools.count(word) == 1);
+            }
+        }
+        i = j == i ? i + 1 : j;
+    }
+    for (const char *tool : {"get_studio_state", "get_project", "revert_change", "open_in_official_studio"})
+        CHECK(mentioned.count(tool) == 1);
 }
 
 TEST_CASE("notifications and client responses get no reply", "[agent_bridge]")
