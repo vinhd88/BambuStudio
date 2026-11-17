@@ -1,19 +1,11 @@
 #include "AgentBridgeConnectionsSection.hpp"
 
 #include <algorithm>
-#include <ctime>
-
-#include <boost/filesystem/path.hpp>
-#include <boost/nowide/fstream.hpp>
 
 #include <wx/busyinfo.h>
-#include <wx/clipbrd.h>
 #include <wx/sizer.h>
-#include <wx/stdpaths.h>
-#include <wx/utils.h>
 
 #include "libslic3r/AppConfig.hpp"
-#include "libslic3r/Utils.hpp"
 #include "slic3r/GUI/GUI_App.hpp"
 #include "slic3r/GUI/I18N.hpp"
 #include "slic3r/GUI/MainFrame.hpp"
@@ -22,24 +14,14 @@
 #include "slic3r/GUI/Widgets/Label.hpp"
 
 #include "AgentBridge.hpp"
-#include "AgentBridgeAgentDataFolder.hpp"
-#include "AgentBridgeAiAppConfigsCordisYaml.hpp"
 #include "AgentBridgeAiAppConnect.hpp"
+#include "AgentBridgeConnectReport.hpp"
 
 namespace Slic3r { namespace GUI { namespace AgentBridge {
 
 namespace {
 // App config key: the Studio copy and data folder for which the user declined the startup offer.
 const char *const DECLINED_KEY = "agent_connection_check_declined";
-
-std::string home_dir() { return wxGetHomeDir().ToUTF8().data(); }
-
-// The entry that reaches this Studio: this binary, plus --datadir unless it runs on its default folder.
-McpEntry this_studio_entry()
-{
-    const std::string official = wxStandardPaths::Get().GetUserDataDir().ToUTF8().data();
-    return studio_entry(wxStandardPaths::Get().GetExecutablePath().ToUTF8().data(), data_dir(), agent_data_dir_for(official));
-}
 
 wxString status_text(const AppStatus &status)
 {
@@ -53,92 +35,6 @@ wxString status_text(const AppStatus &status)
     return "";
 }
 
-// Always single-quoted: safe for any character in zsh and bash.
-std::string shell_quoted(const std::string &arg)
-{
-    std::string quoted = "'";
-    for (char c : arg)
-        quoted += c == '\'' ? std::string("'\\''") : std::string(1, c);
-    return quoted + "'";
-}
-
-// What to set up by hand when connecting fails: the config snippet, or the CLI command.
-std::string manual_setup(const AiApp &app, const McpEntry &entry)
-{
-    if (app.cli.empty())
-        return app.format == ConfigFormat::CordisYaml ? cordis_yaml_snippet(entry) : json_snippet(entry);
-    // Claude Code refuses to add over an existing entry: remove it first (harmless if there is none).
-    std::string command = app.id == "claude_code" ? std::string("claude mcp remove -s user ") + MCP_ENTRY_NAME + "; claude mcp add -s user " : app.cli + " mcp add ";
-    command += std::string(MCP_ENTRY_NAME) + " -- " + shell_quoted(entry.command);
-    for (const std::string &arg : entry.args)
-        command += " " + shell_quoted(arg);
-    return command;
-}
-
-// Why an entry for this Studio would stop working soon, or empty: macOS runs a downloaded app from a
-// temporary copy until it is moved.
-std::string temporary_location(const std::string &binary)
-{
-    if (binary.find("/AppTranslocation/") != std::string::npos)
-        return "Studio is running from a temporary place, so AI apps could not find it later. Move it to the Applications folder, open it "
-               "from there, then connect.";
-    return "";
-}
-
-// One line per connect in <data folder>/agent-connections.log: what changed the AI apps' configs,
-// when, and from where. Studio's own logs are encrypted.
-void log_connect(const AiApp &app, const char *trigger, const ConnectResult &result)
-{
-    const std::time_t now = std::time(nullptr);
-    char              stamp[32];
-    std::tm           local{};
-    localtime_r(&now, &local);
-    std::strftime(stamp, sizeof(stamp), "%Y-%m-%d %H:%M:%S", &local);
-    boost::nowide::ofstream log((boost::filesystem::path(data_dir()) / "agent-connections.log").string(), std::ios::app);
-    log << stamp << "  " << app.id << "  from " << trigger << "  " << (result.ok ? "connected" : "failed: " + result.message)
-        << (result.backup.empty() ? "" : "  backup " + result.backup) << '\n';
-}
-
-// Connects one app and tells the user how it went. Returns whether it worked.
-bool connect_and_report(wxWindow *parent, const AiApp &app, const McpEntry &entry, const char *trigger)
-{
-    ConnectResult result;
-    if (const std::string place = temporary_location(entry.command); !place.empty())
-        result.message = place;
-    else {
-        wxBusyCursor busy;
-        result = connect_app(app, entry, home_dir());
-    }
-    log_connect(app, trigger, result);
-    const wxString name = wxString::FromUTF8(app.name);
-    if (result.ok) {
-        // Harness reloads its patch file by itself; the others read their config at start.
-        wxString text = app.format == ConfigFormat::CordisYaml
-                            ? wxString::Format(_L("%s is connected to this Studio. It picks up the change in a few seconds."), name)
-                            : wxString::Format(_L("%s is connected to this Studio. Restart %s to use it."), name, name);
-        if (!result.backup.empty())
-            text += "\n\n" + _L("Its previous settings were saved to:") + "\n" + wxString::FromUTF8(result.backup);
-        MessageDialog(parent, text, _L("Connect AI apps"), wxOK | wxICON_INFORMATION).ShowModal();
-        return true;
-    }
-    const std::string manual = manual_setup(app, entry);
-    if (wxTheClipboard->Open()) {
-        wxTheClipboard->SetData(new wxTextDataObject(wxString::FromUTF8(manual)));
-        wxTheClipboard->Close();
-    }
-    const wxString file = wxString::FromUTF8(app.config);
-    const wxString how  = !app.cli.empty()                           ? _L("Run it in Terminal.")
-                          : app.format == ConfigFormat::CordisYaml ? wxString::Format(_L("Add it at the end of %s; DeepSeek Harness reloads it in a few seconds."), file)
-                                                                   : wxString::Format(_L("Paste it into %s under mcpServers."), file);
-    wxString state = result.changed ? _L("Its settings were changed; the previous ones are in:") + "\n" + wxString::FromUTF8(result.backup)
-                                    : _L("Nothing was changed.");
-    MessageDialog(parent,
-                  wxString::Format(_L("Could not connect %s: %s"), name, wxString::FromUTF8(result.message)) + "\n\n" + state + "\n\n" +
-                      _L("The setup was copied to the clipboard.") + " " + how + "\n\n" + wxString::FromUTF8(manual),
-                  _L("Connect AI apps"), wxOK | wxICON_WARNING)
-        .ShowModal();
-    return false;
-}
 } // namespace
 
 std::function<void()> add_connections_section(wxWindow *page, wxSizer *sizer, int row_padding, int text_width,
@@ -166,6 +62,11 @@ std::function<void()> add_connections_section(wxWindow *page, wxSizer *sizer, in
         rows.emplace_back(status, button);
     }
     sizer->Add(grid, row_flags);
+    // A successful connect is reported here, not in a dialog to close; the next click replaces it.
+    auto *note = new ::Label(page, ::Label::Body_12, "");
+    note->SetForegroundColour(ThemeColor::TextSecondary);
+    sizer->AddSpacer(page->FromDIP(6));
+    sizer->Add(note, row_flags);
 
     auto refresh = [page, rows] {
         const McpEntry entry = this_studio_entry();
@@ -180,8 +81,13 @@ std::function<void()> add_connections_section(wxWindow *page, wxSizer *sizer, in
     };
     const auto apps = ai_apps(home_dir());
     for (size_t i = 0; i < apps.size(); ++i)
-        rows[i].second->Bind(wxEVT_BUTTON, [page, app = apps[i], refresh](wxCommandEvent &) {
-            connect_and_report(page, app, this_studio_entry(), "preferences button");
+        rows[i].second->Bind(wxEVT_BUTTON, [page, note, text_width, app = apps[i], refresh](wxCommandEvent &) {
+            const McpEntry       entry   = this_studio_entry();
+            const ConnectOutcome outcome = connect_quietly(app, entry, "preferences button");
+            note->SetLabel(outcome.result.ok ? connected_text(outcome) : wxString());
+            note->Wrap(page->FromDIP(text_width));
+            if (!outcome.result.ok)
+                report_failure(page, outcome, entry);
             refresh();
         });
     return refresh;
@@ -217,8 +123,18 @@ void check_ai_app_connections()
             wxGetApp().app_config->save();
             return;
         }
-        for (const AiApp &app : elsewhere)
-            connect_and_report(wxGetApp().mainframe, app, entry, "startup offer");
+        // All connected first, then one dialog for all of them.
+        std::vector<ConnectOutcome> outcomes;
+        {
+            // Each app's CLI can take a few seconds.
+            wxBusyInfo working(_L("Connecting AI apps to this Studio..."), wxGetApp().mainframe);
+            for (const AiApp &app : elsewhere)
+                outcomes.push_back(connect_quietly(app, entry, "startup offer"));
+        }
+        if (outcomes.size() == 1 && !outcomes.front().result.ok)
+            report_failure(wxGetApp().mainframe, outcomes.front(), entry);
+        else
+            report_summary(wxGetApp().mainframe, outcomes, entry);
     });
 }
 

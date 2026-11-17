@@ -485,6 +485,8 @@ set(SLIC3R_GUI_SOURCES
     GUI/AgentBridge/AgentBridgeAiAppConnect.hpp
     GUI/AgentBridge/AgentBridgeConnectionsSection.cpp
     GUI/AgentBridge/AgentBridgeConnectionsSection.hpp
+    GUI/AgentBridge/AgentBridgeConnectReport.cpp
+    GUI/AgentBridge/AgentBridgeConnectReport.hpp
     GUI/AgentBridge/AgentBridgeProcessRunner.cpp
     GUI/AgentBridge/AgentBridgeProcessRunner.hpp
     GUI/AgentBridge/AgentBridgeAgentDataFolder.hpp
