@@ -103,6 +103,7 @@
 
 #include "GUI.hpp"
 #include "GUI_App.hpp"
+#include "AgentBridge/AgentBridgeOfficialFilamentSyncButton.hpp"
 #include "GuiColor.hpp"
 #include "GUI_ObjectList.hpp"
 #include "GUI_Utils.hpp"
@@ -1091,6 +1092,7 @@ struct Sidebar::priv
     ScalableButton *  m_bpButton_del_filament;
     ScalableButton *  m_bpButton_ams_filament{nullptr};
     ScalableButton *  m_bpButton_set_filament{nullptr};
+    ScalableButton *  m_bpButton_official_filament_sync{nullptr}; // agent build: sync from the official Studio
     int m_menu_filament_id = -1;
     wxPanel*          m_panel_filament_subtitle{nullptr};  // "Filament" subtitle row with +/- buttons
     wxPanel*          m_filament_area_wrapper{nullptr};   // Wrapper panel for collapse/expand
@@ -1374,6 +1376,8 @@ void Sidebar::priv::adjust_filament_title_layout()
         available_width -= m_bpButton_ams_filament->GetSize().GetWidth();
     if (m_bpButton_set_filament && m_bpButton_set_filament->IsShown())
         available_width -= m_bpButton_set_filament->GetSize().GetWidth() + FromDIP(12);
+    if (m_bpButton_official_filament_sync && m_bpButton_official_filament_sync->IsShown())
+        available_width -= m_bpButton_official_filament_sync->GetSize().GetWidth() + FromDIP(12);
 
     int button_count = 0;
     if (m_purge_mode_btn->IsShown()) button_count++;
@@ -4177,6 +4181,14 @@ Sidebar::Sidebar(Plater *parent)
     p->m_bpButton_ams_filament = ams_btn;
     bSizer39->Add(ams_btn, 0, wxALIGN_CENTER_VERTICAL);
 
+    // Agent build: sync filament slots and custom filaments from the official Bambu Studio.
+    auto *official_sync_btn = new ScalableButton(p->m_panel_filament_title, wxID_ANY, "agent_official_filament_sync", wxEmptyString, wxDefaultSize,
+                                                 wxDefaultPosition, wxBU_EXACTFIT | wxNO_BORDER, false, 18);
+    official_sync_btn->SetToolTip(_L("Sync filaments from official Bambu Studio"));
+    official_sync_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { AgentBridge::sync_filaments_from_official_studio_clicked(this); });
+    p->m_bpButton_official_filament_sync = official_sync_btn;
+    bSizer39->Add(official_sync_btn, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(12));
+
     // Settings button
     ScalableButton* set_btn = new ScalableButton(p->m_panel_filament_title, wxID_ANY, "settings");
     set_btn->SetToolTip(_L("Set filaments to use"));
@@ -6169,6 +6181,7 @@ void Sidebar::msw_rescale()
     p->m_bpButton_del_filament->msw_rescale();
     p->m_bpButton_ams_filament->msw_rescale();
     p->m_bpButton_set_filament->msw_rescale();
+    p->m_bpButton_official_filament_sync->msw_rescale();
     p->m_flushing_volume_btn->Rescale();
     p->m_purge_mode_btn->Rescale();
     //BBS
@@ -6254,6 +6267,7 @@ void Sidebar::sys_color_changed()
     p->m_bpButton_del_filament->msw_rescale();
     p->m_bpButton_ams_filament->msw_rescale();
     p->m_bpButton_set_filament->msw_rescale();
+    p->m_bpButton_official_filament_sync->msw_rescale();
     p->m_flushing_volume_btn->Rescale();
     p->m_purge_mode_btn->Rescale();
 
