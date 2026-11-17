@@ -8,6 +8,7 @@
 
 #include "AgentBridgeApplyHandlers.hpp"
 #include "AgentBridgeFilamentHandlers.hpp"
+#include "AgentBridgeOfficialFilamentSyncHandler.hpp"
 #include "AgentBridgeBrimEarsHandler.hpp"
 #include "AgentBridgeCutHandler.hpp"
 #include "AgentBridgeFlattenFaces.hpp"
@@ -61,6 +62,7 @@ const std::unordered_map<std::string, Tool> &tools()
         {"select_filament", {select_filament, Gate::Mutate}},
         {"select_process_preset", {select_process_preset, Gate::Mutate}},
         {"set_object_filament", {set_object_filament, Gate::Mutate}},
+        {"sync_filaments_from_official_studio", {sync_filaments_from_official_studio, Gate::Mutate}},
         {"revert_change", {revert_change, Gate::Mutate}},
         {"get_object_geometry", {get_object_geometry, Gate::Read}},
         {"orient_objects", {orient_objects, Gate::Mutate}},

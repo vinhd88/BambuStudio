@@ -12,7 +12,6 @@
 #include "slic3r/GUI/Plater.hpp"
 
 #include "AgentBridgeAgentDataFolder.hpp"
-#include "AgentBridgeMutationGate.hpp"
 #include "AgentBridgeOfficialFilamentSync.hpp"
 
 namespace fs = boost::filesystem;
@@ -59,8 +58,6 @@ FilamentSyncOutcome run_official_filament_sync(bool apply)
                                                 "the signed-out agent build.");
     if (wxGetApp().plater()->sidebar().is_new_project_in_gcode3mf())
         throw FilamentSyncRefused("gcode_project", "The open project is a sliced G-code file; its filaments cannot be changed.");
-    if (apply && !running_mutation_id().empty())
-        throw FilamentSyncRefused("studio_busy", "An agent change is still running in Studio. Try again when it has finished.");
     const fs::path              official_dir = official_data_dir_from_home();
     const fs::path              agent_dir    = data_dir();
     const OfficialFilamentSlots official     = read_official(official_dir, agent_dir);

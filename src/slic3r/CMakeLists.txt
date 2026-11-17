@@ -500,6 +500,8 @@ set(SLIC3R_GUI_SOURCES
     GUI/AgentBridge/AgentBridgeOfficialFilamentSyncRun.hpp
     GUI/AgentBridge/AgentBridgeOfficialFilamentSyncButton.cpp
     GUI/AgentBridge/AgentBridgeOfficialFilamentSyncButton.hpp
+    GUI/AgentBridge/AgentBridgeOfficialFilamentSyncHandler.cpp
+    GUI/AgentBridge/AgentBridgeOfficialFilamentSyncHandler.hpp
     GUI/AgentBridge/AgentBridgeFilamentSlotsApply.cpp
     GUI/AgentBridge/AgentBridgeFilamentSlotsApply.hpp
     GUI/AgentBridge/AgentBridgePreferencesTab.hpp

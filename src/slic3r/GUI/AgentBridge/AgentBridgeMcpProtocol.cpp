@@ -60,6 +60,7 @@ Rules:
 - Model tools (orient_objects, arrange_plate, transform_object, split_object, cut_object, lay_on_face, set_variable_layer_height, brim_ears, paint_facets, add_text, mesh_boolean, simplify_object, add_model, add_plate) change the model; get_object_geometry reads sizes and faces. Object and part numbers shift after split, cut, add_model and mesh_boolean: use the list each result returns. orient_objects and arrange_plate return a job_id: poll get_job.
 - A call that returns in_progress is still running: do not repeat it, read the outcome from last_change (or last_handoff) in get_studio_state.
 - studio_busy: wait, then call get_studio_state. waiting_for_user: a dialog is open in Studio; ask the user to answer it, never work around it.
+- To use the filaments the user has in the official Bambu Studio (its slots and custom presets), call sync_filaments_from_official_studio: preview first, apply with the user's OK.
 - add_model and font_path: only paths the user gave.
 - Printer settings and G-code are read-only. Keep temperatures within the filament's range.
 - get_settings returns only changed values by default; pass a category, and use include_defaults only together with a category, or the output is huge.

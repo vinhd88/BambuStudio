@@ -8,6 +8,7 @@
 #include "slic3r/GUI/NotificationManager.hpp"
 #include "slic3r/GUI/Plater.hpp"
 
+#include "AgentBridgeMutationGate.hpp"
 #include "AgentBridgeOfficialFilamentSyncRun.hpp"
 
 using nlohmann::json;
@@ -79,6 +80,9 @@ bool nothing_to_do(const json &report)
 void sync_filaments_from_official_studio_clicked(wxWindow *parent)
 {
     try {
+        // The tool is held back by the bridge's own gate; the button checks here.
+        if (!running_mutation_id().empty())
+            throw FilamentSyncRefused("studio_busy", "An agent change is still running in Studio. Try again when it has finished.");
         const FilamentSyncOutcome preview = run_official_filament_sync(false);
         if (preview.report.contains("warning"))
             throw FilamentSyncRefused("unsaved_filament_edits", preview.report["warning"].get<std::string>());

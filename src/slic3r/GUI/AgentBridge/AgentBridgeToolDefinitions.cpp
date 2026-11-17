@@ -307,6 +307,20 @@ const char *const TOOLS_JSON = R"tools([
     }
   },
   {
+    "name": "sync_filaments_from_official_studio",
+    "description": "Copy the filament slots the user has in the official Bambu Studio (preset and colour per slot, i.e. its last AMS sync) and its custom filament presets into this project, as the sidebar's sync button does. preview true (default) changes nothing and lists, per slot, before, after and status (changed, same, skipped or not_applied with a reason, removed, kept), the slot count, presets added or updated, printer_matches, mixed_slots_left_out and any warning. Show the user that list and get their OK, then call with preview false: status applied, or partial when stopped or a slot was not applied, with a change_id for revert_change. revert_change puts the slots back; copied or updated presets keep the official values, and objects moved off a removed slot stay where they are (it says so). Removing a slot that objects print with makes Studio ask the user (waiting_for_user). Like other changes, it waits while Studio slices or shows a dialog, preview included. Errors: official_studio_not_found, official_config_unreadable (the official Studio may be saving: ask the user to close it), signed_in, gcode_project; status rejected with code unsaved_changes: ask the user to save or discard the filament's edits.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "preview": {
+          "type": "boolean",
+          "description": "true (default): only report what would change. false: apply it."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "select_process_preset",
     "description": "Switch the process preset, as picking it in the Process list does. If the current one has unsaved edits, status is rejected with code unsaved_changes and the edited keys, unless keep_changes is true: then Studio carries the edits over to the new preset (kept_changes lists them). linked_changes lists filament slots Studio switched because the old filament does not suit the new process. Returns a change_id for revert_change.",
     "inputSchema": {
