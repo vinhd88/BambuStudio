@@ -14,6 +14,7 @@ add_executable(${_TEST_NAME}_tests
     agent_bridge_geometry_revert_tests.cpp
     agent_bridge_mcp_tests.cpp
     agent_bridge_official_data_import_tests.cpp
+    agent_bridge_official_filament_sync_tests.cpp
     agent_bridge_ai_app_connect_tests.cpp
     agent_bridge_cordis_yaml_entry_tests.cpp
 )

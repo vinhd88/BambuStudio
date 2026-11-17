@@ -1,7 +1,7 @@
 #include "AgentBridgeAgentDataFolder.hpp"
+#include "AgentBridgeOfficialDataFiles.hpp"
 
 #include <cstdlib>
-#include <ctime>
 
 #include <boost/filesystem.hpp>
 #include <boost/nowide/fstream.hpp>
@@ -21,26 +21,6 @@ bool same_folder(const fs::path &a, const fs::path &b)
 {
     boost::system::error_code ec;
     return fs::equivalent(a, b, ec) || a.lexically_normal() == b.lexically_normal();
-}
-
-std::string timestamp()
-{
-    const std::time_t now = std::time(nullptr);
-    std::tm           local{};
-    localtime_r(&now, &local);
-    char text[32];
-    std::strftime(text, sizeof(text), "%Y%m%d-%H%M%S", &local);
-    return text;
-}
-
-// A name nothing has used yet: backups are never overwritten.
-fs::path new_backup_path(const fs::path &agent_dir)
-{
-    const std::string base = agent_dir.lexically_normal().string() + "-backup-" + timestamp();
-    fs::path          path = base;
-    for (int n = 2; fs::exists(path); ++n)
-        path = base + "-" + std::to_string(n);
-    return path;
 }
 
 // Copies the user presets and app config to a new "<agent>-backup-<time>" beside the folder. Removes
