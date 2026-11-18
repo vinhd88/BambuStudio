@@ -7,6 +7,8 @@
 #include "slic3r/GUI/MsgDialog.hpp"
 #include "slic3r/GUI/NotificationManager.hpp"
 #include "slic3r/GUI/Plater.hpp"
+#include "slic3r/GUI/Tab.hpp"
+#include "libslic3r/PresetBundle.hpp"
 
 #include "AgentBridgeMutationGate.hpp"
 #include "AgentBridgeOfficialFilamentSyncRun.hpp"
@@ -68,6 +70,25 @@ wxString changes_text(const json &report)
     return text;
 }
 
+// Unsaved edits on the selected filament would be dropped by the preset reload: Studio's own
+// Save / Discard / Cancel dialog, as when switching presets. False when the user cancels.
+bool settle_unsaved_filament_edits()
+{
+    PresetCollection &filaments = wxGetApp().preset_bundle->filaments;
+    Tab              *tab       = wxGetApp().get_tab(Preset::TYPE_FILAMENT);
+    if (!filaments.current_is_dirty() || tab == nullptr)
+        return true;
+    if (!tab->may_discard_current_dirty_preset(nullptr, "", true))
+        return false;
+    // Save leaves nothing dirty; Discard leaves the dropping to the caller, as preset switching does.
+    if (filaments.current_is_dirty()) {
+        filaments.discard_current_changes();
+        tab->load_current_preset();
+        wxGetApp().plater()->on_config_change(wxGetApp().preset_bundle->full_config());
+    }
+    return true;
+}
+
 bool nothing_to_do(const json &report)
 {
     for (const json &slot : report["slots"])
@@ -83,8 +104,10 @@ void sync_filaments_from_official_studio_clicked(wxWindow *parent)
         // The tool is held back by the bridge's own gate; the button checks here.
         if (!running_mutation_id().empty())
             throw FilamentSyncRefused("studio_busy", "An agent change is still running in Studio. Try again when it has finished.");
+        if (!settle_unsaved_filament_edits())
+            return;
         const FilamentSyncOutcome preview = run_official_filament_sync(false);
-        if (preview.report.contains("warning"))
+        if (preview.report.contains("warning")) // still dirty: the dialog did not settle it
             throw FilamentSyncRefused("unsaved_filament_edits", preview.report["warning"].get<std::string>());
         if (nothing_to_do(preview.report)) {
             MessageDialog(parent, _L("This project's filaments already match the official Bambu Studio."), title(), wxOK | wxICON_INFORMATION).ShowModal();
