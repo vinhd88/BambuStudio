@@ -30,6 +30,8 @@ public:
     void SetPageText(size_t n, const wxString& strText);
     wxString GetPageText(size_t n) const;
     void SetPageToolTip(size_t n, const wxString& strToolTip);
+    // Agent build: hide a tab button while keeping its page index (tab positions stay stable).
+    void ShowPageButton(size_t n, bool show);
 
 private:
     // BBS: use a box sizer so tabs can shrink (Chrome-style) when space is tight
@@ -247,6 +249,11 @@ public:
     void SetPageToolTip(size_t n, const wxString& strToolTip)
     {
         GetBtnsListCtrl()->SetPageToolTip(n, strToolTip);
+    }
+
+    void ShowPageButton(size_t n, bool show)
+    {
+        GetBtnsListCtrl()->ShowPageButton(n, show);
     }
 
     // Override some wxWindow methods too.

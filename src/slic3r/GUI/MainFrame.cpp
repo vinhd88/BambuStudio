@@ -1374,6 +1374,13 @@ void MainFrame::init_tabpanel()
         int old_sel = e.GetOldSelection();
         int new_sel = e.GetSelection();
 
+        // Agent build cannot talk to printers: the Device tab is hidden, so block every route to it
+        // (menus, shortcuts, print flows that call select_tab(tpMonitor)).
+        if (new_sel == tpMonitor) {
+            e.Veto();
+            return;
+        }
+
         //if (bool test = false) {
         //    SupportRecommendDialog* dialog = new SupportRecommendDialog(nullptr, _L("Notice"));;
 
@@ -1575,6 +1582,7 @@ void MainFrame::init_tabpanel()
     m_monitor = new MonitorPanel(m_tabpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
     m_monitor->SetBackgroundColour(*wxWHITE);
     m_tabpanel->AddPage(m_monitor, _L("Device"), std::string("tab_monitor_active"), std::string("tab_monitor_active"), false);
+    m_tabpanel->ShowPageButton(tpMonitor, false); // agent build: no printer access
 
     m_printer_view = new PrinterWebView(m_tabpanel);
     Bind(EVT_LOAD_PRINTER_URL, [this](wxCommandEvent &evt) {
@@ -1645,6 +1653,8 @@ void MainFrame::show_device(bool bBBLPrinter) {
                           std::string("tab_monitor_active"), false);
     }
   }
+  // Re-inserting creates a fresh button: keep the Device tab hidden in the agent build.
+  m_tabpanel->ShowPageButton(tpMonitor, false);
 }
 
 
