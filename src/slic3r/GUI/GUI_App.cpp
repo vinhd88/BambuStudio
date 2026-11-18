@@ -409,7 +409,7 @@ public:
         int logo_margin = FromDIP(72 * m_scale);
         int logo_size = FromDIP(122 * m_scale);
         int logo_width = FromDIP(94 * m_scale);
-        wxBitmap logo_bmp = *bmp_cache.load_svg("splash_logo", logo_size, logo_size);
+        wxBitmap logo_bmp = *bmp_cache.load_svg("agent_splash_logo", logo_size, logo_size); // agent-bridge: violet logo, see MainFrame Dock icon
         int logo_y = top_margin + title_rect.GetHeight() + logo_margin;
         memDc.DrawBitmap(logo_bmp, (width - logo_width) / 2, logo_y, true);
 

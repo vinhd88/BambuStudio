@@ -10,6 +10,7 @@
 # Outputs (committed, rerun only when the official icons change):
 #   resources/BambuAgentStudio.icns                     bundle icon (Finder, Spotlight, Dock)
 #   resources/images/BambuAgentStudio-mac_256px.ico     Dock icon set at runtime by MainFrame
+#   resources/images/agent_splash_logo.svg              startup splash logo (GUI_App)
 # Needs: ImageMagick 7 (magick), iconutil (macOS).
 set -euo pipefail
 
@@ -53,5 +54,9 @@ le32() { printf "\\x$(printf %02x $(($1 & 255)))\\x$(printf %02x $(($1 >> 8 & 25
     cat "$WORK/dock.png"
 } > "$RES/images/BambuAgentStudio-mac_256px.ico"
 
+# Startup splash logo: flat vector, a plain color swap is exact.
+sed 's/#00AE42/#7C3AED/g' "$RES/images/splash_logo.svg" > "$RES/images/agent_splash_logo.svg"
+
 echo "Wrote $RES/BambuAgentStudio.icns"
 echo "Wrote $RES/images/BambuAgentStudio-mac_256px.ico"
+echo "Wrote $RES/images/agent_splash_logo.svg"
