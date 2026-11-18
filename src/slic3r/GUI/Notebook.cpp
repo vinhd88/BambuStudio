@@ -251,14 +251,6 @@ void ButtonsListCtrl::RemovePage(size_t n)
     m_sizer->Layout();
 }
 
-void ButtonsListCtrl::ShowPageButton(size_t n, bool show)
-{
-    if (n >= m_pageButtons.size())
-        return;
-    m_buttons_sizer->Show(m_pageButtons[n], show);
-    m_sizer->Layout();
-}
-
 bool ButtonsListCtrl::SetPageImage(size_t n, const std::string& bmp_name) const
 {
     if (n >= m_pageButtons.size())
