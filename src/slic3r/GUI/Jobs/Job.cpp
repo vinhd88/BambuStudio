@@ -37,7 +37,13 @@ void GUI::Job::update_percent_finish()
 
 void GUI::Job::show_error_info(wxString msg, int code, wxString description, wxString extra)
 {
-    m_progress->show_error_info(msg, code, description, extra);
+    if (wxIsMainThread()) {
+        m_progress->show_error_info(msg, code, description, extra);
+        return;
+    }
+    CallAfter([this, msg, code, description, extra]() {
+        m_progress->show_error_info(msg, code, description, extra);
+    });
 }
 
 GUI::Job::Job(std::shared_ptr<ProgressIndicator> pri)
